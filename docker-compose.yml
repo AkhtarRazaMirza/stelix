@@ -1,0 +1,19 @@
+services:
+  postgresdb:
+    image: postgres:17
+    restart: unless-stopped
+    container_name: Stellix-db
+
+    environment:
+      POSTGRES_USER: Stellix
+      POSTGRES_PASSWORD: Stellix
+      POSTGRES_DB: dev
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - pg_data:/var/lib/Stellix-db/data
+
+volumes:
+  pg_data:

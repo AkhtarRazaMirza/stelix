@@ -1,0 +1,35 @@
+{
+  "name": "stelix-backend",
+  "version": "1.0.0",
+  "description": "this is the backend of my ai workflow service",
+  "keywords": [
+    "web-dev",
+    "ai",
+    "workflow"
+  ],
+  "license": "ISC",
+  "author": "Akhtar Raza Mirza",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db-start": "docker-compose up -d",
+    "db-stop": "docker-compose down",
+    "db-generate": "npx drizzle-kit generate",
+    "db-migrate": "npx drizzle-kit migrate",
+    "db-studio": "npx drizzle-kit studio"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.21.0",
+    "tsc-watch": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.22.4"
+  }
+}
