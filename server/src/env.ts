@@ -11,8 +11,6 @@ const envSchema = z.object({
   EMAIL_FROM: z.string(),
   JWT_ACCESS_TOKEN_SECRET: z.string(),
   JWT_ACCESS_TOKEN_EXPIRES_IN: z.string(),
-  JWT_REFRESH_TOKEN_SECRET: z.string(),
-  JWT_REFRESH_TOKEN_EXPIRES_IN: z.string(),
   JWT_EMAIL_VARIFICATION_TOKEN_SECRET: z.string(),
   JWT_EMAIL_VARIFICATION_TOKEN_EXPIRES_IN: z.string(),
   APP_URL: z.string(),
@@ -20,6 +18,8 @@ const envSchema = z.object({
   JWT_PASSWORD_RESET_EXPIRES_IN: z.string(),
   NODE_ENV: z.enum(["development", "prod"]).default("development"),
   LOGGER_LEVEL: z.enum(["error", "debug", "info"]).optional(),
+  GROQ_API_KEY: z.string(),
+  TAVILY_API_KEY: z.string(),
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {

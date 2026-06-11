@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors"
 import cookieParser from "cookie-parser";
+import { authRoutes } from "../routes/auth.router.js";
 
 
 export function serverConfig() {
@@ -20,6 +21,8 @@ export function serverConfig() {
             massege: "server is up and running"
         })
     })
+
+    app.use("/api/auth", authRoutes)
 
     return app
 }
