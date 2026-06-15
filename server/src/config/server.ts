@@ -5,6 +5,7 @@ import { authRoutes } from "../routes/auth.router.js";
 import { emailRoutes } from "../routes/email.routes.js";
 import { calendarRoutes } from "../routes/calendar.routes.js";
 import { integrationRoutes } from "../routes/integration.routes.js";
+import { assistantRoutes } from "../routes/assistant.routes.js";
 
 
 export function serverConfig() {
@@ -29,6 +30,7 @@ export function serverConfig() {
     app.use("/api/emails", emailRoutes);
     app.use("/api/calendar", calendarRoutes);
     app.use("/api/integration", integrationRoutes);
+    app.use("/api/assistant", assistantRoutes);
 
     return app
 }
