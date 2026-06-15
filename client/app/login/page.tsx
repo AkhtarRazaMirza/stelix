@@ -1,22 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import {
+  loginSchema,
+  type LoginInput,
+} from "@/lib/validations/auth";
+
+import { login } from "@/lib/api/auth";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] =
-    useState("");
+  const router = useRouter();
 
-  async function handleSubmit(
-    e: React.FormEvent
+  const {
+    register,
+    handleSubmit,
+    formState: {
+      errors,
+      isSubmitting,
+    },
+  } = useForm<LoginInput>({
+    resolver:
+      zodResolver(loginSchema),
+  });
+
+  async function onSubmit(
+    data: LoginInput
   ) {
-    e.preventDefault();
+    try {
+      await login(data);
 
-    console.log({
-      email,
-      password,
-    });
+      router.push("/dashboard");
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Login failed"
+      );
+    }
   }
 
   return (
@@ -31,42 +56,58 @@ export default function LoginPage() {
         </p>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={handleSubmit(
+            onSubmit
+          )}
           className="space-y-4"
         >
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
-            }
-            className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
-          />
+          <div>
+            <input
+              {...register("email")}
+              type="email"
+              placeholder="Email"
+              className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
+            />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) =>
-              setPassword(
-                e.target.value
-              )
-            }
-            className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
-          />
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.email.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <input
+              {...register(
+                "password"
+              )}
+              type="password"
+              placeholder="Password"
+              className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
+            />
+
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-500">
+                {
+                  errors.password
+                    .message
+                }
+              </p>
+            )}
+          </div>
 
           <button
+            disabled={isSubmitting}
             type="submit"
             className="w-full rounded-lg bg-white py-3 font-medium text-black"
           >
-            Sign In
+            {isSubmitting
+              ? "Signing In..."
+              : "Sign In"}
           </button>
         </form>
 
-        <button
-          className="mt-4 w-full rounded-lg border border-white/10 py-3"
-        >
+        <button className="mt-4 w-full rounded-lg border border-white/10 py-3">
           Continue with Google
         </button>
 

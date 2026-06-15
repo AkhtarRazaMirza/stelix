@@ -1,28 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import {
+  registerSchema,
+  RegisterInput,
+} from "@/lib/validations/auth";
+
+import { register } from "@/lib/api/auth";
 
 export default function SignupPage() {
-  const [fullName, setFullName] =
-    useState("");
+  const router = useRouter();
 
-  const [email, setEmail] =
-    useState("");
+  const {
+    register: registerField,
+    handleSubmit,
+    formState: {
+      errors,
+      isSubmitting,
+    },
+  } = useForm<RegisterInput>({
+    resolver:
+      zodResolver(registerSchema),
+  });
 
-  const [password, setPassword] =
-    useState("");
-
-  async function handleSubmit(
-    e: React.FormEvent
+  async function onSubmit(
+    data: RegisterInput
   ) {
-    e.preventDefault();
+    try {
+      await register(data);
 
-    console.log({
-      fullName,
-      email,
-      password,
-    });
+      router.push("/login");
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Registration failed"
+      );
+    }
   }
 
   return (
@@ -37,53 +56,82 @@ export default function SignupPage() {
         </p>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={handleSubmit(
+            onSubmit
+          )}
           className="space-y-4"
         >
-          <input
-            placeholder="Full Name"
-            value={fullName}
-            onChange={(e) =>
-              setFullName(
-                e.target.value
-              )
-            }
-            className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
-          />
+          <div>
+            <input
+              {...registerField(
+                "fullName"
+              )}
+              placeholder="Full Name"
+              className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
+            />
 
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
-            }
-            className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
-          />
+            {errors.fullName && (
+              <p className="mt-1 text-sm text-red-500">
+                {
+                  errors.fullName
+                    .message
+                }
+              </p>
+            )}
+          </div>
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) =>
-              setPassword(
-                e.target.value
-              )
-            }
-            className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
-          />
+          <div>
+            <input
+              {...registerField(
+                "email"
+              )}
+              type="email"
+              placeholder="Email"
+              className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
+            />
+
+            {errors.email && (
+              <p className="mt-1 text-sm text-red-500">
+                {
+                  errors.email
+                    .message
+                }
+              </p>
+            )}
+          </div>
+
+          <div>
+            <input
+              {...registerField(
+                "password"
+              )}
+              type="password"
+              placeholder="Password"
+              className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
+            />
+
+            {errors.password && (
+              <p className="mt-1 text-sm text-red-500">
+                {
+                  errors.password
+                    .message
+                }
+              </p>
+            )}
+          </div>
 
           <button
+            disabled={isSubmitting}
             type="submit"
             className="w-full rounded-lg bg-white py-3 font-medium text-black"
           >
-            Create Account
+            {isSubmitting
+              ? "Creating..."
+              : "Create Account"}
           </button>
         </form>
 
-        <button
-          className="mt-4 w-full rounded-lg border border-white/10 py-3"
-        >
+        <button className="mt-4 w-full rounded-lg border border-white/10 py-3">
           Continue with Google
         </button>
 
