@@ -38,9 +38,9 @@ const navigation = [
   },
 ];
 
-const pathname = usePathname();
 
 export function AppSidebar() {
+  const pathname = usePathname();
   return (
     <aside className="w-64 border-r border-white/10 bg-[#111111]">
       <div className="border-b border-white/10 p-6">
