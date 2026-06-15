@@ -20,6 +20,11 @@ const envSchema = z.object({
   LOGGER_LEVEL: z.enum(["error", "debug", "info"]).optional(),
   GROQ_API_KEY: z.string(),
   TAVILY_API_KEY: z.string(),
+  TAVILY_SECRET: z.string(),
+  TAVILY_CALLBACK_URL: z.string(),
+  TAVILY_WEBHOOK_SECRET: z.string(),
+  CORSAIR_DEV_KEY: z.string(),
+  CORSAIR_KEK: z.string(),
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {
