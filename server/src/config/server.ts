@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { authRoutes } from "../routes/auth.router.js";
 import { emailRoutes } from "../routes/email.routes.js";
 import { calendarRoutes } from "../routes/calendar.routes.js";
+import { integrationRoutes } from "../routes/integration.routes.js";
 
 
 export function serverConfig() {
@@ -27,6 +28,7 @@ export function serverConfig() {
     app.use("/api/auth", authRoutes);
     app.use("/api/emails", emailRoutes);
     app.use("/api/calendar", calendarRoutes);
+    app.use("/api/integration", integrationRoutes);
 
     return app
 }
