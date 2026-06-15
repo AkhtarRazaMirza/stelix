@@ -22,23 +22,23 @@ export class CalendarController {
     }
   }
 
-  public async createEvent(
-    req: Request,
-    res: Response
-  ) {
-    try {
-      const event =
-        await calendarService.createEvent(
-          req.body
-        );
+  // public async createEvent(
+  //   req: Request,
+  //   res: Response
+  // ) {
+  //   try {
+  //     const event =
+  //       await calendarService.createEvent(
+  //         req.body
+  //       );
 
-      res.status(201).json({
-        event,
-      });
-    } catch (error) {
-      res.status(500).json({
-        error: (error as Error).message,
-      });
-    }
-  }
+  //     res.status(201).json({
+  //       event,
+  //     });
+  //   } catch (error) {
+  //     res.status(500).json({
+  //       error: (error as Error).message,
+  //     });
+  //   }
+  // }
 }

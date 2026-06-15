@@ -1,40 +1,52 @@
+import { corsair } from "../corsair.js";
+
+function getHeader(
+  headers: any[],
+  name: string
+) {
+  return headers.find(
+    (h) => h.name === name
+  )?.value;
+}
+
 export class EmailService {
   async getEmails() {
-    return [
-      {
-        id: "1",
-        from: "john@example.com",
-        subject: "Meeting Tomorrow",
-        snippet: "Let's discuss the project tomorrow.",
-        receivedAt: new Date(),
-      },
-      {
-        id: "2",
-        from: "team@company.com",
-        subject: "Weekly Update",
-        snippet: "Here is the latest update...",
-        receivedAt: new Date(),
-      },
-    ];
-  }
+    const response =
+      await corsair.gmail.api.messages.list(
+        {}
+      );
 
-  async getEmailById(id: string) {
-    return {
-      id,
-      from: "john@example.com",
-      subject: "Meeting Tomorrow",
-      body: "Full email content here...",
-    };
-  }
+    const emails = await Promise.all(
+      response.messages
+        .slice(0, 20)
+        .map(async (message: any) => {
+          const email =
+            await corsair.gmail.api.messages.get({
+              id: message.id,
+            });
 
-  async sendEmail(data: {
-    to: string;
-    subject: string;
-    body: string;
-  }) {
-    return {
-      success: true,
-      message: "Email sent successfully",
-    };
+          return {
+            id: email.id,
+
+            from: getHeader(
+              email.payload.headers,
+              "From"
+            ),
+
+            subject: getHeader(
+              email.payload.headers,
+              "Subject"
+            ),
+
+            snippet: email.snippet,
+
+            receivedAt: new Date(
+              Number(email.internalDate)
+            ),
+          };
+        })
+    );
+
+    return emails;
   }
 }

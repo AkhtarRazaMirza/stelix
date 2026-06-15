@@ -1,29 +1,17 @@
-export class CalendarService {
-  public async getEvents() {
-    return [
-      {
-        id: "1",
-        title: "Team Meeting",
-        start: new Date(),
-        end: new Date(),
-      },
-      {
-        id: "2",
-        title: "Project Review",
-        start: new Date(),
-        end: new Date(),
-      },
-    ];
-  }
+import { corsair } from "../corsair.js";
 
-  public async createEvent(data: {
-    title: string;
-    start: string;
-    end: string;
-  }) {
-    return {
-      id: crypto.randomUUID(),
-      ...data,
-    };
+export class CalendarService {
+  async getEvents() {
+    const result =
+      await corsair.googlecalendar.api.events.getMany({});
+
+    return result.items.map((event: any) => ({
+      id: event.id,
+      title: event.summary,
+      start: event.start?.dateTime,
+      end: event.end?.dateTime,
+      status: event.status,
+      htmlLink: event.htmlLink,
+    }));
   }
 }

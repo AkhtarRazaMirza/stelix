@@ -12,25 +12,25 @@ export class EmailController {
     });
   }
 
-  async getEmail(req: Request, res: Response) {
-    const id = req.params.id;
-    if (!id || Array.isArray(id)) {
-      res.status(400).json({ error: "Invalid email ID" });
-      return;
-    }
+  // async getEmail(req: Request, res: Response) {
+  //   const id = req.params.id;
+  //   if (!id || Array.isArray(id)) {
+  //     res.status(400).json({ error: "Invalid email ID" });
+  //     return;
+  //   }
 
-    const email = await emailService.getEmailById(id);
+  //   const email = await emailService.getEmailById(id);
 
-    res.status(200).json({
-      email,
-    });
-  }
+  //   res.status(200).json({
+  //     email,
+  //   });
+  // }
 
-  async sendEmail(req: Request, res: Response) {
-    const result = await emailService.sendEmail(
-      req.body
-    );
+  // async sendEmail(req: Request, res: Response) {
+  //   const result = await emailService.sendEmail(
+  //     req.body
+  //   );
 
-    res.status(200).json(result);
-  }
+  //   res.status(200).json(result);
+  // }
 }

@@ -11,10 +11,18 @@ export function EventList({
   return (
     <div className="space-y-3">
       {events.map((event) => (
-        <EventItem
+        <div
           key={event.id}
-          event={event}
-        />
+          className="rounded-xl border border-white/10 p-4"
+        >
+          <h3 className="font-medium">
+            {event.title}
+          </h3>
+
+          <p className="text-sm text-zinc-400">
+            {new Date(event.start).toLocaleString()}
+          </p>
+        </div>
       ))}
     </div>
   );

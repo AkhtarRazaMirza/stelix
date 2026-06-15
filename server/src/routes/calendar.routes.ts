@@ -16,14 +16,14 @@ router.get(
     )
 );
 
-router.post(
-  "/",
-  verifyAccessToken,
-  (req, res) =>
-    calendarController.createEvent(
-      req,
-      res
-    )
-);
+// router.post(
+//   "/",
+//   verifyAccessToken,
+//   (req, res) =>
+//     calendarController.createEvent(
+//       req,
+//       res
+//     )
+// );
 
 export const calendarRoutes = router;
