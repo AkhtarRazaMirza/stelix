@@ -45,6 +45,7 @@ coverage/
 *.pem
 .vscode/
 .idea/
+.claude
 
 # Cache Directories
 .eslintcache

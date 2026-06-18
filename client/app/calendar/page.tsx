@@ -344,6 +344,7 @@ export default function CalendarPage() {
                 setSelected(null);
                 setRescheduleTarget(event);
               }}
+              onUpdated={loadEvents}
               onDeleted={() => {
                 setSelected(null);
                 loadEvents();

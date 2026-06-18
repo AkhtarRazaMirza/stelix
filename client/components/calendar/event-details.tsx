@@ -10,18 +10,24 @@ import {
   CalendarClock,
   ExternalLink,
   Loader2,
+  Plus,
+  UserPlus,
 } from "lucide-react";
 
-import { deleteEvent } from "@/lib/api/calendar";
+import { deleteEvent, updateEvent } from "@/lib/api/calendar";
 import { ApiError } from "@/lib/api/client";
-import type { EventDetail } from "@/types/calendar";
+import type { CalendarAttendee, EventDetail } from "@/types/calendar";
 
 interface EventDetailsProps {
   event: EventDetail;
   onClose: () => void;
   onReschedule: (event: EventDetail) => void;
   onDeleted: () => void;
+  /** Called after the guest list changes, so the parent can refresh lists. */
+  onUpdated?: (event: EventDetail) => void;
 }
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function formatRange(start: string, end: string): string {
   const startDate = new Date(start);
@@ -57,9 +63,15 @@ export function EventDetails({
   onClose,
   onReschedule,
   onDeleted,
+  onUpdated,
 }: EventDetailsProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const [attendees, setAttendees] = useState<CalendarAttendee[]>(
+    event.attendees
+  );
+  const [newAttendee, setNewAttendee] = useState("");
+  const [savingAttendees, setSavingAttendees] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
@@ -76,6 +88,55 @@ export function EventDetails({
       );
       setDeleting(false);
     }
+  }
+
+  // Persists a new guest list via the existing updateEvent API. The backend
+  // replaces the full attendee set, so we always send the complete list and
+  // notify everyone of the change.
+  async function persistAttendees(emails: string[]) {
+    setSavingAttendees(true);
+    setError("");
+
+    try {
+      const { event: updated } = await updateEvent(event.id, {
+        attendees: emails,
+      });
+      setAttendees(updated.attendees);
+      onUpdated?.(updated);
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Failed to update attendees."
+      );
+    } finally {
+      setSavingAttendees(false);
+    }
+  }
+
+  async function handleAddAttendee() {
+    const email = newAttendee.trim().toLowerCase();
+
+    if (!EMAIL_PATTERN.test(email)) {
+      setError("Enter a valid email address.");
+      return;
+    }
+
+    if (attendees.some((a) => a.email.toLowerCase() === email)) {
+      setError("That attendee is already invited.");
+      return;
+    }
+
+    const emails = [...attendees.map((a) => a.email), email];
+    setNewAttendee("");
+    await persistAttendees(emails);
+  }
+
+  async function handleRemoveAttendee(target: string) {
+    const emails = attendees
+      .map((a) => a.email)
+      .filter((email) => email.toLowerCase() !== target.toLowerCase());
+    await persistAttendees(emails);
   }
 
   return (
@@ -117,30 +178,76 @@ export function EventDetails({
           </p>
         )}
 
-        {event.attendees.length > 0 && (
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-zinc-300">
-              <Users className="h-4 w-4 text-zinc-500" />
-              Attendees ({event.attendees.length})
-            </div>
+        <div>
+          <div className="mb-2 flex items-center gap-2 text-zinc-300">
+            <Users className="h-4 w-4 text-zinc-500" />
+            Attendees ({attendees.length})
+            {savingAttendees && (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-500" />
+            )}
+          </div>
 
+          {attendees.length > 0 && (
             <ul className="space-y-1">
-              {event.attendees.map((attendee) => (
+              {attendees.map((attendee) => (
                 <li
                   key={attendee.email}
-                  className="flex items-center justify-between gap-2 text-zinc-400"
+                  className="group flex items-center justify-between gap-2 text-zinc-400"
                 >
                   <span className="truncate">
                     {attendee.displayName || attendee.email}
                   </span>
-                  <span className="shrink-0 text-xs text-zinc-500">
-                    {attendee.responseStatus}
+
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs text-zinc-500">
+                      {attendee.responseStatus}
+                    </span>
+                    {!attendee.organizer && (
+                      <button
+                        onClick={() => handleRemoveAttendee(attendee.email)}
+                        disabled={savingAttendees}
+                        aria-label={`Remove ${attendee.email}`}
+                        className="text-zinc-600 transition hover:text-red-400 disabled:opacity-50"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </span>
                 </li>
               ))}
             </ul>
+          )}
+
+          <div className="mt-2 flex items-center gap-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-zinc-500">
+              <UserPlus className="h-4 w-4" />
+            </span>
+            <input
+              type="email"
+              value={newAttendee}
+              onChange={(e) => setNewAttendee(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleAddAttendee();
+                }
+              }}
+              placeholder="Add attendee by email"
+              disabled={savingAttendees}
+              aria-label="Add attendee by email"
+              className="h-9 flex-1 rounded-lg border border-white/10 bg-black px-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-white/20 disabled:opacity-50"
+            />
+            <button
+              onClick={() => void handleAddAttendee()}
+              disabled={savingAttendees || newAttendee.trim().length === 0}
+              aria-label="Add attendee"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-3 text-sm text-zinc-300 transition hover:bg-white/5 disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              Add
+            </button>
           </div>
-        )}
+        </div>
 
         {event.htmlLink && (
           <a

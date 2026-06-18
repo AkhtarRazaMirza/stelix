@@ -18,6 +18,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ComposeEmailModal } from "@/components/mail/compose-email-modal";
 import { CreateEventModal } from "@/components/calendar/create-event-modal";
 import { EventDetails } from "@/components/calendar/event-details";
+import { RescheduleModal } from "@/components/calendar/reschedule-modal";
 import { toDateTimeLocalValue } from "@/components/calendar/calendar-utils";
 
 import { CommandBar } from "@/components/command-center/command-bar";
@@ -55,6 +56,9 @@ export default function CommandCenterPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createWithAttendees, setCreateWithAttendees] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDetail | null>(null);
+  const [rescheduleEvent, setRescheduleEvent] = useState<EventDetail | null>(
+    null
+  );
 
   // Global keyboard shortcuts:
   //   Cmd/Ctrl+K  toggle command palette
@@ -349,7 +353,11 @@ export default function CommandCenterPage() {
             <EventDetails
               event={selectedEvent}
               onClose={() => setSelectedEvent(null)}
-              onReschedule={() => setSelectedEvent(null)}
+              onReschedule={(event) => {
+                setSelectedEvent(null);
+                setRescheduleEvent(event);
+              }}
+              onUpdated={refresh}
               onDeleted={() => {
                 setSelectedEvent(null);
                 refresh();
@@ -357,6 +365,14 @@ export default function CommandCenterPage() {
             />
           </div>
         </div>
+      )}
+
+      {rescheduleEvent && (
+        <RescheduleModal
+          event={rescheduleEvent}
+          onClose={() => setRescheduleEvent(null)}
+          onRescheduled={refresh}
+        />
       )}
     </AppShell>
   );

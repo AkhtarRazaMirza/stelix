@@ -132,7 +132,7 @@ export function createCalendarTools(
       function: {
         name: "update_calendar_event",
         description:
-          "Update or reschedule an existing calendar event by id. Only include the fields that change. Use list_calendar_events first to find the event id.",
+          "Update or reschedule an existing calendar event by id. Only include the fields that change. To change the guest list, use addAttendees / removeAttendees (existing attendees are preserved). Use list_calendar_events first to find the event id.",
         parameters: {
           type: "object",
           properties: {
@@ -151,6 +151,18 @@ export function createCalendarTools(
             },
             description: { type: "string", description: "New description." },
             location: { type: "string", description: "New location." },
+            addAttendees: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "Email addresses to invite to the event, in addition to the current guests. Invitations are emailed automatically.",
+            },
+            removeAttendees: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "Email addresses to remove from the event's guest list. They are notified of the cancellation.",
+            },
           },
           required: ["eventId"],
         },
@@ -164,13 +176,19 @@ export function createCalendarTools(
       const endTime = getIsoDateTime(args, "endTime");
       const description = getString(args, "description");
       const location = getString(args, "location");
+      const addAttendees = getEmailList(args, "addAttendees");
+      const removeAttendees = getEmailList(args, "removeAttendees");
+
+      const changesAttendees =
+        addAttendees.length > 0 || removeAttendees.length > 0;
 
       if (
         title === undefined &&
         startTime === undefined &&
         endTime === undefined &&
         description === undefined &&
-        location === undefined
+        location === undefined &&
+        !changesAttendees
       ) {
         throw new ToolArgumentError("Provide at least one field to update.");
       }
@@ -183,6 +201,25 @@ export function createCalendarTools(
         throw new ToolArgumentError("End time must be after start time.");
       }
 
+      // Attendee edits are additive/subtractive, but the underlying service
+      // replaces the full guest list. Read the current event and merge so we
+      // never silently drop existing attendees.
+      let attendees: string[] | undefined;
+      if (changesAttendees) {
+        const current = await calendarService.getEvent(userId, eventId);
+        const removeSet = new Set(removeAttendees);
+        const merged = current.attendees
+          .map((a) => a.email.toLowerCase())
+          .filter((email) => email.length > 0 && !removeSet.has(email));
+
+        for (const email of addAttendees) {
+          if (!merged.includes(email)) {
+            merged.push(email);
+          }
+        }
+        attendees = merged;
+      }
+
       const event = await calendarService.updateEvent(
         userId,
         eventId,
@@ -192,21 +229,33 @@ export function createCalendarTools(
           ...(endTime !== undefined ? { endTime } : {}),
           ...(description !== undefined ? { description } : {}),
           ...(location !== undefined ? { location } : {}),
+          ...(attendees !== undefined ? { attendees } : {}),
         },
         true
       );
 
+      const summary = changesAttendees
+        ? `Event "${event.title}" updated — ${event.attendees.length} attendee${
+            event.attendees.length === 1 ? "" : "s"
+          }`
+        : `Event "${event.title}" updated`;
+
       return {
         status: "success",
         category: "calendar",
-        summary: `Event "${event.title}" updated`,
+        summary,
         data: {
           id: event.id,
           title: event.title,
           startTime: event.startTime,
           endTime: event.endTime,
+          attendees: event.attendees.map((a) => a.email),
         },
-        detail: { title: event.title, startTime: event.startTime },
+        detail: {
+          title: event.title,
+          startTime: event.startTime,
+          attendeeCount: event.attendees.length,
+        },
       };
     },
   };
