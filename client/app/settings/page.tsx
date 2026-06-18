@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -14,6 +14,8 @@ import {
 
 import {
   getIntegrations,
+  connectIntegration,
+  disconnectIntegration,
 } from "@/lib/api/integrations";
 
 type User = {
@@ -24,10 +26,19 @@ type User = {
 };
 
 type Integration = {
-  id: string;
+  id: string | null;
   provider: string;
   connected: boolean;
 };
+
+const PROVIDER_LABELS: Record<string, string> = {
+  gmail: "Gmail",
+  googlecalendar: "Google Calendar",
+};
+
+function providerLabel(provider: string) {
+  return PROVIDER_LABELS[provider] ?? provider;
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -41,20 +52,26 @@ export default function SettingsPage() {
   const [loading, setLoading] =
     useState(true);
 
+  const [actionLoading, setActionLoading] =
+    useState<string | null>(null);
+
+  const [banner, setBanner] =
+    useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const loadIntegrations = useCallback(async () => {
+    const integrationData = await getIntegrations();
+    setIntegrations(integrationData.integrations);
+  }, []);
+
   useEffect(() => {
     async function load() {
       try {
-        const [userData, integrationData] =
-          await Promise.all([
-            getCurrentUser(),
-            getIntegrations(),
-          ]);
+        const [userData] = await Promise.all([
+          getCurrentUser(),
+          loadIntegrations(),
+        ]);
 
         setUser(userData.user);
-
-        setIntegrations(
-          integrationData.integrations
-        );
       } catch (error) {
         console.error(error);
       } finally {
@@ -63,7 +80,29 @@ export default function SettingsPage() {
     }
 
     load();
-  }, []);
+  }, [loadIntegrations]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connected = params.get("connected");
+    const error = params.get("error");
+
+    if (connected) {
+      setBanner({
+        type: "success",
+        message: `${providerLabel(connected)} connected successfully.`,
+      });
+    } else if (error) {
+      setBanner({
+        type: "error",
+        message: "Failed to connect. Please try again.",
+      });
+    }
+
+    if (connected || error) {
+      router.replace("/settings");
+    }
+  }, [router]);
 
   async function handleLogout() {
     try {
@@ -74,6 +113,41 @@ export default function SettingsPage() {
       console.error(error);
     }
   }
+
+  const handleConnect = useCallback(
+    async (_id: string, provider: string) => {
+      setActionLoading(provider);
+      try {
+        const { url } = await connectIntegration(provider);
+
+        window.location.href = url;
+      } catch (error) {
+        console.error("Failed to connect:", error);
+        setBanner({
+          type: "error",
+          message: "Failed to start the connection. Please try again.",
+        });
+        setActionLoading(null);
+      }
+    },
+    []
+  );
+
+  const handleDisconnect = useCallback(
+    async (id: string, provider: string) => {
+      setActionLoading(provider);
+      try {
+        await disconnectIntegration(id);
+
+        await loadIntegrations();
+      } catch (error) {
+        console.error("Failed to disconnect:", error);
+      } finally {
+        setActionLoading(null);
+      }
+    },
+    [loadIntegrations]
+  );
 
   if (loading) {
     return (
@@ -92,6 +166,18 @@ export default function SettingsPage() {
           title="Settings"
           description="Manage your account, integrations and preferences."
         />
+
+        {banner && (
+          <div
+            className={`rounded-lg border px-4 py-3 text-sm ${
+              banner.type === "success"
+                ? "border-green-500/20 bg-green-500/10 text-green-400"
+                : "border-red-500/20 bg-red-500/10 text-red-400"
+            }`}
+          >
+            {banner.message}
+          </div>
+        )}
 
         {/* Profile */}
         <div className="rounded-xl border border-white/10 bg-[#111111] p-6">
@@ -128,8 +214,8 @@ export default function SettingsPage() {
               <p className="mt-1">
                 {user?.created_at
                   ? new Date(
-                      user.created_at
-                    ).toLocaleDateString()
+                    user.created_at
+                  ).toLocaleDateString()
                   : "-"}
               </p>
             </div>
@@ -146,13 +232,23 @@ export default function SettingsPage() {
             {integrations.map(
               (integration) => (
                 <IntegrationCard
-                  key={integration.id}
-                  title={
+                  key={integration.provider}
+                  id={integration.id ?? ""}
+                  title={providerLabel(integration.provider)}
+                  description={`Connect your ${providerLabel(
                     integration.provider
-                  }
-                  description={`Connect your ${integration.provider} account`}
+                  )} account`}
                   connected={
                     integration.connected
+                  }
+                  loading={
+                    actionLoading === integration.provider
+                  }
+                  onConnect={(_id) =>
+                    handleConnect(_id, integration.provider)
+                  }
+                  onDisconnect={(id) =>
+                    handleDisconnect(id, integration.provider)
                   }
                 />
               )

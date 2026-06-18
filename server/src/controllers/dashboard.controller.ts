@@ -1,28 +1,20 @@
-import type {
-  Request,
-  Response,
-} from "express";
-
+import type { Response } from "express";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
 import { DashboardService } from "../services/dashboard.service.js";
+import { logger } from "../config/logger.js";
 
-const dashboardService =
-  new DashboardService();
+const dashboardService = new DashboardService();
 
 export class DashboardController {
-  async getDashboard(
-    req: Request,
-    res: Response
-  ) {
-    try {
-      const data =
-        await dashboardService.getDashboardData();
+  async getDashboard(req: AuthRequest, res: Response) {
+    logger.info("GET /api/dashboard", {
+      userId: req.userId,
+      requestId: req.requestId,
+      route: req.path,
+    });
 
-      return res.status(200).json(data);
-    } catch (error) {
-      return res.status(500).json({
-        message:
-          (error as Error).message,
-      });
-    }
+    const data = await dashboardService.getDashboardData(req.userId!);
+
+    res.status(200).json(data);
   }
 }

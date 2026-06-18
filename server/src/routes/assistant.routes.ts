@@ -1,19 +1,21 @@
 import { Router } from "express";
-
 import { AssistantController } from "../controllers/assistant.controller.js";
-import { verifyAccessToken } from "../middleware/auth.middleware.js";
+import {
+  requireUserId,
+  verifyAccessToken,
+} from "../middleware/auth.middleware.js";
+import { asyncHandler, validate } from "../middleware/validate.middleware.js";
+import { assistantChatSchema } from "../validations/assistant.validation.js";
 
 const router = Router();
-
-const assistantController =
-  new AssistantController();
+const controller = new AssistantController();
 
 router.post(
   "/",
   verifyAccessToken,
-  (req, res) =>
-    assistantController.chat(req, res)
+  requireUserId,
+  validate({ body: assistantChatSchema }),
+  asyncHandler((req, res) => controller.chat(req, res))
 );
 
-export const assistantRoutes =
-  router;
+export const assistantRoutes = router;

@@ -4,13 +4,21 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard,
+  Command,
   Inbox,
+  Mail,
   Calendar,
+  Sparkles,
   Bot,
   Settings,
 } from "lucide-react";
 
 const navigation = [
+  {
+    label: "Command Center",
+    href: "/command-center",
+    icon: Command,
+  },
   {
     label: "Dashboard",
     href: "/dashboard",
@@ -22,9 +30,19 @@ const navigation = [
     icon: Inbox,
   },
   {
+    label: "Mail",
+    href: "/mail",
+    icon: Mail,
+  },
+  {
     label: "Calendar",
     href: "/calendar",
     icon: Calendar,
+  },
+  {
+    label: "Agent",
+    href: "/agent",
+    icon: Sparkles,
   },
   {
     label: "Assistant",

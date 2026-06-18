@@ -52,9 +52,15 @@ export function AppHeader() {
   }, []);
 
   async function handleLogout() {
-    await logout();
+    try {
+      await logout();
 
-    router.push("/login");
+      router.push("/login");
+    } catch {
+      console.error(
+        "Logout failed"
+      );
+    }
   }
 
   return (
@@ -69,8 +75,12 @@ export function AppHeader() {
         <DropdownMenuTrigger>
           <Avatar>
             <AvatarFallback>
-              {user?.full_name?.[0] ??
-                "U"}
+              {user?.full_name
+                ?.split(" ")
+                .map((name) => name[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase() ?? "U"}
             </AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>
@@ -89,6 +99,14 @@ export function AppHeader() {
           </DropdownMenuLabel>
 
           <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            onClick={() =>
+              router.push("/profile")
+            }
+          >
+            Profile
+          </DropdownMenuItem>
 
           <DropdownMenuItem
             onClick={() =>

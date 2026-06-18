@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/ui/page-header";
+import { sendMessage } from "@/lib/api/assistant";
 
 type Message = {
   id: string;
@@ -32,21 +33,7 @@ export default function AssistantPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/assistant",
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message: prompt,
-          }),
-        }
-      );
-
-      const data = await response.json();
+      const data = await sendMessage(prompt);
 
       const assistantMessage: Message = {
         id: crypto.randomUUID(),
@@ -64,7 +51,7 @@ export default function AssistantPage() {
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: "Something went wrong.",
+          content: "Something went wrong. Please try again.",
         },
       ]);
     } finally {
@@ -95,11 +82,10 @@ export default function AssistantPage() {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`max-w-[80%] rounded-xl p-4 ${
-                  message.role === "user"
-                    ? "ml-auto bg-white text-black"
-                    : "bg-white/5"
-                }`}
+                className={`max-w-[80%] rounded-xl p-4 ${message.role === "user"
+                  ? "ml-auto bg-white text-black"
+                  : "bg-white/5"
+                  }`}
               >
                 {message.content}
               </div>
@@ -122,7 +108,8 @@ export default function AssistantPage() {
                 placeholder="Ask Stelix..."
                 className="flex-1 rounded-lg border border-white/10 bg-black px-4 py-3 outline-none"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
                     handleSend();
                   }
                 }}
@@ -130,8 +117,8 @@ export default function AssistantPage() {
 
               <button
                 onClick={handleSend}
-                disabled={loading}
-                className="rounded-lg bg-white px-4 py-3 text-black"
+                disabled={loading || !input.trim()}
+                className="rounded-lg bg-white px-4 py-3 text-black disabled:opacity-50"
               >
                 Send
               </button>

@@ -1,14 +1,23 @@
-export async function getDashboard() {
-  const response = await fetch(
-    "http://localhost:8000/api/dashboard",
-    {
-      credentials: "include",
-    }
-  );
-  
-  if (!response.ok) {
-    throw new Error("Failed to fetch user");
-  }
+import { apiFetch } from "./client";
 
-  return response.json();
+export function getDashboard() {
+  return apiFetch<{
+    emailCount: number;
+    meetingCount: number;
+    integrationCount: number;
+    aiSummary: string;
+    recentEmails: {
+      id: string;
+      from: string;
+      subject: string;
+      snippet?: string;
+      receivedAt?: string;
+    }[];
+    upcomingEvents: {
+      id: string;
+      title: string;
+      start?: string;
+      end?: string;
+    }[];
+  }>("/dashboard");
 }

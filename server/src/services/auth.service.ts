@@ -32,7 +32,7 @@ export class AuthService {
     private getCookieOptions(expiresIn: number) {
         return {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: env.NODE_ENV === "production",
             sameSite: "lax" as const,
             maxAge: expiresIn * 1000,
         };

@@ -1,96 +1,57 @@
-const API_URL = "http://localhost:8000";
+import { apiFetch, ApiError } from "./client";
 
-export async function register(
-  data: {
-    fullName: string;
-    email: string;
-    password: string;
-  }
-) {
-  const response = await fetch(
-    `${API_URL}/api/auth/register`,
+export async function register(data: {
+  fullName: string;
+  email: string;
+  password: string;
+}) {
+  return apiFetch<{ user: { id: string; fullName: string; email: string; emailVerified: boolean } }>(
+    "/auth/register",
     {
       method: "POST",
-      headers: {
-        "Content-Type":
-          "application/json",
-      },
-      credentials: "include",
       body: JSON.stringify(data),
     }
   );
-
-  if (!response.ok) {
-    const error =
-      await response.json();
-
-    throw new Error(
-      error.error ||
-        "Registration failed"
-    );
-  }
-
-  return response.json();
 }
 
-export async function login(
-  data: {
-    email: string;
-    password: string;
-  }
-) {
-  const response = await fetch(
-    `${API_URL}/api/auth/login`,
+export async function login(data: {
+  email: string;
+  password: string;
+}) {
+  return apiFetch<{ user: { id: string; fullName: string; email: string; profileImageUrl: string | null; emailVerified: boolean } }>(
+    "/auth/login",
     {
       method: "POST",
-      headers: {
-        "Content-Type":
-          "application/json",
-      },
-      credentials: "include",
       body: JSON.stringify(data),
     }
   );
+}
 
-  if (!response.ok) {
-    const error =
-      await response.json();
-
-    throw new Error(
-      error.error || "Login failed"
-    );
-  }
-
-  return response.json();
+export async function loginWithGoogle(idToken: string) {
+  return apiFetch<{ user: { id: string; fullName: string; email: string; profileImageUrl: string | null; emailVerified: boolean } }>(
+    "/auth/google",
+    {
+      method: "POST",
+      body: JSON.stringify({ idToken }),
+    }
+  );
 }
 
 export async function getCurrentUser() {
-  const response = await fetch(
-    `${API_URL}/api/auth/me`,
-    {
-      credentials: "include",
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch user");
-  }
-
-  return response.json();
+  return apiFetch<{
+    user: {
+      id: string;
+      full_name: string;
+      email: string;
+      created_at: string;
+    };
+  }>("/auth/me");
 }
 
 export async function logout() {
-  const response = await fetch(
-    `${API_URL}/api/auth/logout`,
-    {
-      method: "POST",
-      credentials: "include",
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error("Logout failed");
-  }
-
-  return response.json();
+  return apiFetch<{ message: string }>("/auth/logout", {
+    method: "POST",
+  });
 }
+
+export { ApiError };

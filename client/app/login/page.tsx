@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,10 +12,13 @@ import {
   type LoginInput,
 } from "@/lib/validations/auth";
 
-import { login } from "@/lib/api/auth";
+import { login, loginWithGoogle, ApiError } from "@/lib/api/auth";
+import { GoogleLogin } from "@react-oauth/google";
 
 export default function LoginPage() {
   const router = useRouter();
+
+  const [serverError, setServerError] = useState("");
 
   const {
     register,
@@ -32,14 +36,43 @@ export default function LoginPage() {
     data: LoginInput
   ) {
     try {
+      setServerError("");
       await login(data);
 
-      router.push("/dashboard");
+      router.push("/command-center");
     } catch (error) {
-      alert(
-        error instanceof Error
+      setServerError(
+        error instanceof ApiError
           ? error.message
-          : "Login failed"
+          : error instanceof Error
+            ? error.message
+            : "Login failed"
+      );
+    }
+  }
+
+  async function handleGoogleLogin(
+    credentialResponse: { credential?: string }
+  ) {
+    try {
+      setServerError("");
+
+      if (!credentialResponse.credential) {
+        throw new Error("Google credential missing");
+      }
+
+      await loginWithGoogle(
+        credentialResponse.credential
+      );
+
+      router.push("/command-center");
+    } catch (error) {
+      setServerError(
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Google login failed"
       );
     }
   }
@@ -54,6 +87,12 @@ export default function LoginPage() {
         <p className="mb-8 text-zinc-400">
           Sign in to continue using Stelix.
         </p>
+
+        {serverError && (
+          <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            {serverError}
+          </div>
+        )}
 
         <form
           onSubmit={handleSubmit(
@@ -99,7 +138,7 @@ export default function LoginPage() {
           <button
             disabled={isSubmitting}
             type="submit"
-            className="w-full rounded-lg bg-white py-3 font-medium text-black"
+            className="w-full rounded-lg bg-white py-3 font-medium text-black disabled:opacity-50"
           >
             {isSubmitting
               ? "Signing In..."
@@ -107,10 +146,14 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <button className="mt-4 w-full rounded-lg border border-white/10 py-3">
-          Continue with Google
-        </button>
-
+        <div className="mt-4 flex justify-center">
+          <GoogleLogin
+            onSuccess={handleGoogleLogin}
+            onError={() => {
+              setServerError("Google login failed");
+            }}
+          />
+        </div>
         <p className="mt-6 text-center text-sm text-zinc-400">
           Don't have an account?{" "}
           <Link

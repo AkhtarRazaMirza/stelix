@@ -1,89 +1,98 @@
-import { EmailService } from "./email.service.js";
+import { getGroqClient } from "../config/ai.js";
+import { logger } from "../config/logger.js";
+import { IntegrationRepository } from "../repositories/integration.repository.js";
+import { EmailService, type MappedEmail } from "./email.service.js";
 import { CalendarService } from "./calendar.service.js";
-import { checkGROQAi } from "../config/ai.js";
-
-const emailService = new EmailService();
-const calendarService = new CalendarService();
 
 export class DashboardService {
-  async getDashboardData() {
-    const emails =
-      await emailService.getEmails();
+  constructor(
+    private readonly emailService = new EmailService(),
+    private readonly calendarService = new CalendarService(),
+    private readonly integrationRepository = new IntegrationRepository()
+  ) { }
 
-    const events =
-      await calendarService.getEvents();
+  async getDashboardData(userId: string) {
+    logger.info("Building dashboard data", { userId });
 
-    const aiSummary =
-      await this.getAISummary();
+    const integrations =
+      await this.integrationRepository.getByUserId(userId);
+
+    const hasGmail = integrations.some(
+      (integration) => integration.provider === "gmail"
+    );
+    const hasCalendar = integrations.some(
+      (integration) => integration.provider === "googlecalendar"
+    );
+
+    const emails = hasGmail
+      ? await this.emailService.getEmails(userId)
+      : [];
+
+    const events = hasCalendar
+      ? await this.calendarService.getUpcomingEvents(userId)
+      : [];
+
+    const aiSummary = hasGmail
+      ? await this.getAISummary(userId, emails)
+      : "Connect Gmail to receive AI summaries.";
 
     return {
       emailCount: emails.length,
-
       meetingCount: events.length,
-
-      integrationCount: 2,
-
+      integrationCount: integrations.length,
       aiSummary,
-
       recentEmails: emails.slice(0, 5),
-
       upcomingEvents: events.slice(0, 5),
     };
   }
 
-  async getAISummary() {
-    const emails =
-      await emailService.getEmails();
-
+  private async getAISummary(userId: string, emails: MappedEmail[]) {
     if (emails.length === 0) {
       return "No emails found.";
     }
 
-    const groq =
-      await checkGROQAi();
+    logger.info("Generating dashboard AI summary", {
+      userId,
+      emailCount: emails.length,
+    });
+
+    const groq = getGroqClient();
 
     const emailContext = emails
       .slice(0, 10)
       .map(
-        (email: any) =>
-          `
-From: ${email.from}
-Subject: ${email.subject}
-Snippet: ${email.snippet}
-`
+        (email) =>
+          `From: ${email.from}\nSubject: ${email.subject}\nSnippet: ${email.snippet}`
       )
       .join("\n");
 
-    const response =
-      await groq.chat.completions.create({
-        model:
-          "llama-3.3-70b-versatile",
-        messages: [
-          {
-            role: "system",
-            content: `
-Create a short dashboard summary.
+    const response = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `
+You are an executive assistant creating a dashboard briefing.
 
-Use bullet points.
-
-Maximum 4 bullets.
-
-Focus on:
-- Important emails
-- Action items
-- Meetings
+Rules:
+- Return only bullet points
+- Maximum 3 bullet points
+- Maximum 12 words per bullet
+- Focus on urgent emails
+- Focus on action items
+- Focus on meetings or deadlines
+- Ignore promotions
+- Ignore newsletters
+- Ignore marketing emails
 `,
-          },
-          {
-            role: "user",
-            content: emailContext,
-          },
-        ],
-      });
+        },
+        {
+          role: "user",
+          content: emailContext,
+        },
+      ],
+    });
 
-    return (
-      response.choices?.[0]?.message
-        ?.content ?? ""
-    );
+    return response.choices?.[0]?.message?.content ?? "";
   }
 }
