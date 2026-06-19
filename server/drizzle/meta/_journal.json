@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1781149817349,
-      "tag": "0000_deep_dust",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1781250000000,
-      "tag": "0001_integrations",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1781633257968,
-      "tag": "0002_rare_microbe",
+      "when": 1781867490902,
+      "tag": "0000_lucky_calypso",
       "breakpoints": true
     }
   ]
