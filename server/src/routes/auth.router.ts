@@ -10,7 +10,7 @@ import {
     loginUserWithGoogleInput,
     verifyEmailInput,
     updateUserProfileInput,
-} from '../type/auth.type.js';
+} from '../types/auth.type.js';
 
 const router = Router();
 const authController = new AuthController();

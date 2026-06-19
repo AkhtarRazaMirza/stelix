@@ -11,7 +11,7 @@ import {
     type ResetPasswordInput,
     loginUserWithGoogleInput,
     type LoginUserWithGoogleInput
-} from "../type/auth.type.js";
+} from "../types/auth.type.js";
 
 import { db } from "../config/db.js";
 import { usersTable } from "../db/schema.js";
