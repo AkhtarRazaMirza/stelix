@@ -7,6 +7,7 @@ import type { EventSummary } from "@/types/calendar";
 import { WidgetCard } from "./widget-card";
 import { CommandCenterEmptyState } from "./empty-state";
 import { CommandCenterErrorState } from "./error-state";
+import { WidgetSkeleton } from "./loading-state";
 import type { SectionStatus } from "@/lib/api/command-center";
 import { clockTime } from "./utils";
 
@@ -82,7 +83,9 @@ function CalendarWidgetComponent({
       }
       className="min-h-[20rem]"
     >
-      {status === "not-connected" ? (
+      {status === "loading" ? (
+        <WidgetSkeleton rows={4} />
+      ) : status === "not-connected" ? (
         <div className="p-5">
           <CommandCenterEmptyState
             icon={Calendar}

@@ -49,7 +49,16 @@ function greetingForHour(hour: number): string {
 
 export default function CommandCenterPage() {
   const router = useRouter();
-  const { data, status, refreshing, refresh } = useCommandCenter();
+  const {
+    integrations,
+    integrationsReady,
+    inbox,
+    sent,
+    calendar,
+    metrics,
+    refreshing,
+    refresh,
+  } = useCommandCenter();
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -219,7 +228,7 @@ export default function CommandCenterPage() {
   const hour = new Date().getHours();
   const greeting = greetingForHour(hour);
 
-  if (status === "loading") {
+  if (!integrationsReady) {
     return (
       <AppShell>
         <CommandCenterLoadingState />
@@ -227,30 +236,16 @@ export default function CommandCenterPage() {
     );
   }
 
-  if (status === "error" || !data) {
-    return (
-      <AppShell>
-        <CommandCenterErrorState
-          title="Unable to load Command Center"
-          description="We couldn't reach your workspace data. Please try again."
-          onRetry={refresh}
-        />
-      </AppShell>
-    );
-  }
-
   const subtitleParts: string[] = [];
-  if (data.integrations.gmail) {
+  if (integrations.gmail) {
     subtitleParts.push(
-      `${data.inbox.unreadCount} unread email${
-        data.inbox.unreadCount === 1 ? "" : "s"
+      `${inbox.unreadCount} unread email${inbox.unreadCount === 1 ? "" : "s"
       }`
     );
   }
-  if (data.integrations.calendar) {
+  if (integrations.calendar) {
     subtitleParts.push(
-      `${data.calendar.todayCount} meeting${
-        data.calendar.todayCount === 1 ? "" : "s"
+      `${calendar.todayCount} meeting${calendar.todayCount === 1 ? "" : "s"
       } today`
     );
   }
@@ -279,25 +274,25 @@ export default function CommandCenterPage() {
         />
 
         <ProductivitySummary
-          metrics={data.metrics}
-          gmailConnected={data.integrations.gmail}
-          calendarConnected={data.integrations.calendar}
+          metrics={metrics}
+          gmailConnected={integrations.gmail}
+          calendarConnected={integrations.calendar}
         />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <InboxWidget
-            status={data.inbox.status}
-            emails={data.inbox.emails}
-            unreadCount={data.inbox.unreadCount}
+            status={inbox.status}
+            emails={inbox.emails}
+            unreadCount={inbox.unreadCount}
             onViewAll={() => router.push("/mail")}
             onConnect={() => router.push("/settings")}
             onRetry={refresh}
           />
 
           <CalendarWidget
-            status={data.calendar.status}
-            events={data.calendar.events}
-            todayCount={data.calendar.todayCount}
+            status={calendar.status}
+            events={calendar.events}
+            todayCount={calendar.todayCount}
             onSelectEvent={openEvent}
             onViewAll={() => router.push("/calendar")}
             onConnect={() => router.push("/settings")}
@@ -306,14 +301,14 @@ export default function CommandCenterPage() {
         </div>
 
         <UpcomingMeetings
-          events={data.calendar.upcoming}
+          events={calendar.upcoming}
           onSelectEvent={openEvent}
         />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <ActivityFeed
-            sentEmails={data.sentEmails}
-            recentEvents={data.calendar.upcoming}
+            sentEmails={sent.emails}
+            recentEvents={calendar.upcoming}
           />
 
           <AiAssistantPanel onActionsCompleted={refresh} />
@@ -324,8 +319,8 @@ export default function CommandCenterPage() {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         staticItems={staticCommands}
-        gmailConnected={data.integrations.gmail}
-        calendarConnected={data.integrations.calendar}
+        gmailConnected={integrations.gmail}
+        calendarConnected={integrations.calendar}
         onSelectEmail={() => router.push("/mail")}
         onSelectEvent={openEvent}
       />

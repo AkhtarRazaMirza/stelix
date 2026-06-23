@@ -10,11 +10,14 @@ import {
 } from "lucide-react";
 
 import type { CommandCenterMetrics } from "@/lib/api/command-center";
+import { MetricsSkeleton } from "./loading-state";
 
 interface ProductivitySummaryProps {
   metrics: CommandCenterMetrics;
   gmailConnected: boolean;
   calendarConnected: boolean;
+  /** While integrations are still resolving, show skeleton tiles. */
+  loading?: boolean;
 }
 
 interface Metric {

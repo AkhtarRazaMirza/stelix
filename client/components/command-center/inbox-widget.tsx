@@ -7,6 +7,7 @@ import type { EmailSummary } from "@/types/gmail";
 import { WidgetCard } from "./widget-card";
 import { CommandCenterEmptyState } from "./empty-state";
 import { CommandCenterErrorState } from "./error-state";
+import { WidgetSkeleton } from "./loading-state";
 import type { SectionStatus } from "@/lib/api/command-center";
 import { senderName, inboxTime } from "./utils";
 
@@ -55,7 +56,9 @@ function InboxWidgetComponent({
       }
       className="min-h-[20rem]"
     >
-      {status === "not-connected" ? (
+      {status === "loading" ? (
+        <WidgetSkeleton rows={5} />
+      ) : status === "not-connected" ? (
         <div className="p-5">
           <CommandCenterEmptyState
             icon={Mail}

@@ -4,7 +4,7 @@ import { getIntegrations } from "./integrations";
 import type { EmailSummary } from "@/types/gmail";
 import type { EventSummary } from "@/types/calendar";
 
-export type SectionStatus = "connected" | "not-connected" | "error";
+export type SectionStatus = "loading" | "connected" | "not-connected" | "error";
 
 export interface CommandCenterMetrics {
   unreadEmails: number;
@@ -140,5 +140,65 @@ export async function getCommandCenterData(): Promise<CommandCenterData> {
       emailsSent,
       upcomingInvites: upcoming.length,
     },
+  };
+}
+
+/* ------------------------------------------------------------------ *
+ * Granular section fetchers.
+ *
+ * These power progressive rendering: the hook resolves integrations
+ * first, then loads each section independently so the slowest provider
+ * never blocks the others. They reuse the exact same API layer and
+ * sub-shapes as getCommandCenterData() above — no new endpoints.
+ * ------------------------------------------------------------------ */
+
+export interface IntegrationsState {
+  gmail: boolean;
+  calendar: boolean;
+}
+
+export interface InboxSection {
+  emails: EmailSummary[];
+  unreadCount: number;
+}
+
+export interface CalendarSection {
+  events: EventSummary[];
+  upcoming: EventSummary[];
+  todayCount: number;
+}
+
+export async function fetchIntegrationsState(): Promise<IntegrationsState> {
+  const { integrations } = await getIntegrations();
+
+  return {
+    gmail: integrations.some(
+      (item) => item.provider === "gmail" && item.connected
+    ),
+    calendar: integrations.some(
+      (item) => item.provider === "googlecalendar" && item.connected
+    ),
+  };
+}
+
+export async function fetchInboxSection(): Promise<InboxSection> {
+  const { emails } = await getInbox();
+  return {
+    emails,
+    unreadCount: emails.filter((email) => !email.isRead).length,
+  };
+}
+
+export async function fetchSentEmails(): Promise<EmailSummary[]> {
+  const { emails } = await getSentEmails();
+  return emails;
+}
+
+export async function fetchCalendarSection(): Promise<CalendarSection> {
+  const { events } = await getEventsList();
+  return {
+    events,
+    upcoming: sortUpcoming(events),
+    todayCount: events.filter((event) => isToday(event.startTime)).length,
   };
 }
