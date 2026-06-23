@@ -14,8 +14,15 @@ export class DashboardService {
   async getDashboardData(userId: string) {
     logger.info("Building dashboard data", { userId });
 
+    const dashboardStart = Date.now();
+
+    const integrationsStart = Date.now();
     const integrations =
       await this.integrationRepository.getByUserId(userId);
+    logger.info("[perf] integrations query", {
+      userId,
+      ms: Date.now() - integrationsStart,
+    });
 
     const hasGmail = integrations.some(
       (integration) => integration.provider === "gmail"
@@ -24,17 +31,39 @@ export class DashboardService {
       (integration) => integration.provider === "googlecalendar"
     );
 
+    const emailsStart = Date.now();
     const emails = hasGmail
       ? await this.emailService.getEmails(userId)
       : [];
+    logger.info("[perf] email fetch", {
+      userId,
+      ms: Date.now() - emailsStart,
+      emailCount: emails.length,
+    });
 
+    const eventsStart = Date.now();
     const events = hasCalendar
       ? await this.calendarService.getUpcomingEvents(userId)
       : [];
+    logger.info("[perf] calendar fetch", {
+      userId,
+      ms: Date.now() - eventsStart,
+      eventCount: events.length,
+    });
 
+    const aiSummaryStart = Date.now();
     const aiSummary = hasGmail
       ? await this.getAISummary(userId, emails)
       : "Connect Gmail to receive AI summaries.";
+    logger.info("[perf] ai summary generation", {
+      userId,
+      ms: Date.now() - aiSummaryStart,
+    });
+
+    logger.info("[perf] dashboard total", {
+      userId,
+      ms: Date.now() - dashboardStart,
+    });
 
     return {
       emailCount: emails.length,
