@@ -23,6 +23,11 @@ export async function apiFetch<T>(
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
+        // CSRF protection: the API requires this custom header on
+        // state-changing requests. A cross-site attacker cannot set it
+        // without triggering a CORS preflight that the API rejects. The
+        // value is not a secret — its presence is what the server checks.
+        "x-csrf-protection": "1",
         ...options?.headers,
       },
     }

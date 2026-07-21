@@ -24,17 +24,18 @@ import { EmailService } from "../config/email.js";
 import { deleteAvatar, uploadAvatar } from "../config/avatar.js"
 import { googleOAuth2Client } from "../config/google.auth.js"
 import { env } from "../env.js";
+import { baseAuthCookieOptions } from "../config/cookie.js";
 import bcrypt from "bcrypt";
 
 export class AuthService {
     private readonly ACCESS_TOKEN_COOKIE_NAME = "accessToken";
 
+    // Cookie attributes are environment-driven (see config/cookie.ts) so the
+    // same code path works on localhost, custom production domains, Render, and
+    // preview deployments without hardcoding.
     private getCookieOptions(expiresIn: number) {
         return {
-            httpOnly: true,
-            secure: true,
-            sameSite: "none" as const,
-            domain: ".stelix.akhtarraza.in",
+            ...baseAuthCookieOptions(),
             maxAge: expiresIn * 1000,
         };
     }
@@ -96,7 +97,11 @@ export class AuthService {
     }
 
     public clearAuthCookies(res: Response) {
-        res.clearCookie(this.ACCESS_TOKEN_COOKIE_NAME);
+        // clearCookie only removes the cookie when its attributes (domain,
+        // path, secure, sameSite) match those used when setting it. Passing
+        // the same base options fixes logout in production, where a bare
+        // clearCookie() previously left the cookie in place.
+        res.clearCookie(this.ACCESS_TOKEN_COOKIE_NAME, baseAuthCookieOptions());
     }
 
     public async createUserWithEmailPassword(input: CreateUserWithEmailPasswordInput) {

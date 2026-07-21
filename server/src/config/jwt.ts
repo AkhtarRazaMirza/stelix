@@ -6,6 +6,12 @@ export interface TokenPayload extends JwtPayload {
     userId: string;
 }
 
+// Pin the signing algorithm explicitly. Without this, jwt.verify accepts any
+// algorithm in its default allow-list, which opens the door to algorithm-
+// confusion attacks (e.g. a token forged with "none" or an asymmetric alg).
+// HS256 matches how these HMAC secrets are used for signing.
+const ALGORITHM = "HS256" as const;
+
 export class TokenService {
     private accessTokenExpiresIn =
         env.JWT_ACCESS_TOKEN_EXPIRES_IN;
@@ -18,6 +24,7 @@ export class TokenService {
             { userId },
             env.JWT_ACCESS_TOKEN_SECRET as Secret,
             {
+                algorithm: ALGORITHM,
                 expiresIn: this.accessTokenExpiresIn as any,
             }
         );
@@ -30,6 +37,7 @@ export class TokenService {
             { userId },
             env.JWT_EMAIL_VARIFICATION_TOKEN_SECRET as Secret,
             {
+                algorithm: ALGORITHM,
                 expiresIn:
                     this.emailVerificationTokenExpiresIn as any,
             }
@@ -41,7 +49,8 @@ export class TokenService {
     ): TokenPayload {
         return jwt.verify(
             token,
-            env.JWT_ACCESS_TOKEN_SECRET as Secret
+            env.JWT_ACCESS_TOKEN_SECRET as Secret,
+            { algorithms: [ALGORITHM] }
         ) as TokenPayload;
     }
 
@@ -50,7 +59,8 @@ export class TokenService {
     ): TokenPayload {
         return jwt.verify(
             token,
-            env.JWT_EMAIL_VARIFICATION_TOKEN_SECRET as Secret
+            env.JWT_EMAIL_VARIFICATION_TOKEN_SECRET as Secret,
+            { algorithms: [ALGORITHM] }
         ) as TokenPayload;
     }
 
@@ -61,6 +71,7 @@ export class TokenService {
             { userId },
             env.JWT_PASSWORD_RESET_SECRET as Secret,
             {
+                algorithm: ALGORITHM,
                 expiresIn:
                     env.JWT_PASSWORD_RESET_EXPIRES_IN as any,
             }
@@ -72,7 +83,8 @@ export class TokenService {
     ): TokenPayload {
         return jwt.verify(
             token,
-            env.JWT_PASSWORD_RESET_SECRET as Secret
+            env.JWT_PASSWORD_RESET_SECRET as Secret,
+            { algorithms: [ALGORITHM] }
         ) as TokenPayload;
     }
 

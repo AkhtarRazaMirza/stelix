@@ -18,3 +18,4 @@ process.env.GROQ_API_KEY ??= "test-groq-key";
 process.env.TAVILY_API_KEY ??= "test-tavily-key";
 process.env.CORSAIR_DEV_KEY ??= "test-corsair-dev-key";
 process.env.CORSAIR_KEK ??= "test-corsair-kek";
+process.env.DATABASE_URL ??= "postgres://test:test@localhost:5432/test";
