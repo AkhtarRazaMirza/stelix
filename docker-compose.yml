@@ -1,19 +1,35 @@
+# Local development Postgres for Stelix. Not a production database — managed
+# Postgres (Neon/Render) is used in production; see render.yaml.
 services:
   postgresdb:
     image: postgres:17
     restart: unless-stopped
-    container_name: Stellix-db
+    container_name: stellix-db
 
     environment:
-      POSTGRES_USER: Stellix
-      POSTGRES_PASSWORD: Stellix
-      POSTGRES_DB: dev
+      # Overridable from a local .env, with dev-only defaults. These are NOT
+      # production credentials.
+      POSTGRES_USER: ${POSTGRES_USER:-Stellix}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Stellix}
+      POSTGRES_DB: ${POSTGRES_DB:-dev}
 
     ports:
       - "5432:5432"
 
     volumes:
-      - pg_data:/var/lib/Stellix-db/data
+      # Fixed: Postgres stores its data under /var/lib/postgresql/data. The
+      # previous path (/var/lib/Stellix-db/data) was outside the data dir, so
+      # the named volume never actually persisted anything across restarts.
+      - pg_data:/var/lib/postgresql/data
+
+    # Let dependents (and `docker compose up --wait`) know when the DB is
+    # actually ready to accept connections, not just when the container starts.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-Stellix} -d ${POSTGRES_DB:-dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   pg_data:

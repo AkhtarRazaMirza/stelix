@@ -1,0 +1,32 @@
+# Keep the Docker build context small and free of secrets/artifacts.
+node_modules
+dist
+npm-debug.log*
+
+# Never ship env files or secrets into an image layer.
+.env
+.env.*
+!.env.example
+
+# VCS / editor / CI noise
+.git
+.gitignore
+.github
+.vscode
+.idea
+.claude
+
+# Local-only tooling
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Test + build caches
+coverage
+*.tsbuildinfo
+vitest.config.*
+vitest.setup.ts
+
+# Docs
+README.md
+*.md

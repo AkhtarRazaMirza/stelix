@@ -1,0 +1,114 @@
+# ==========================================================================
+# Render Blueprint for the Stelix backend API.
+# --------------------------------------------------------------------------
+# Reproducible infra-as-code for the API service. The frontend deploys
+# separately to Vercel (Next.js) and is not managed here.
+#
+# Key production properties wired below:
+#   - buildCommand compiles TypeScript to dist/.
+#   - preDeployCommand runs migrations BEFORE the new version serves traffic,
+#     so schema is always ready. It is idempotent (see src/scripts/migrate.ts).
+#   - healthCheckPath lets Render gate the rollout on /api/health and keep the
+#     previous deploy live until the new one is healthy (zero-downtime + easy
+#     rollback by promoting the prior deploy).
+#   - Secrets are marked `sync: false` so they are set in the dashboard, never
+#     committed. Every required var from server/src/env.ts is listed.
+# ==========================================================================
+services:
+  - type: web
+    name: stelix-api
+    runtime: node
+    plan: starter
+    region: oregon
+    branch: main
+    rootDir: server
+    numInstances: 1
+
+    buildCommand: npm ci && npm run build
+    # Migrations run in the pre-deploy phase: after build, before traffic
+    # shifts to the new instance. Fails the deploy if a migration errors.
+    preDeployCommand: npm run migrate
+    startCommand: npm start
+
+    # Render polls this endpoint; the deploy only goes live once it returns
+    # 200, and the previous deploy stays available to promote on failure.
+    healthCheckPath: /api/health
+
+    autoDeploy: true
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8000
+      - key: LOGGER_LEVEL
+        value: info
+
+      # --- Secrets & environment-specific values (set in the dashboard) -----
+      # Database (managed Postgres — Neon or a Render Postgres instance).
+      - key: DATABASE_URL
+        sync: false
+
+      # URLs / CORS — must match the deployed Vercel frontend origin(s).
+      - key: APP_URL
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+
+      # Cookies — cross-site prod frontend/API needs sameSite=none + secure.
+      - key: COOKIE_DOMAIN
+        sync: false
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: COOKIE_SECURE
+        value: "true"
+
+      # JWT secrets — generate unique long random values per secret.
+      - key: JWT_ACCESS_TOKEN_SECRET
+        sync: false
+      - key: JWT_ACCESS_TOKEN_EXPIRES_IN
+        value: 7d
+      - key: JWT_EMAIL_VARIFICATION_TOKEN_SECRET
+        sync: false
+      - key: JWT_EMAIL_VARIFICATION_TOKEN_EXPIRES_IN
+        value: 1h
+      - key: JWT_PASSWORD_RESET_SECRET
+        sync: false
+      - key: JWT_PASSWORD_RESET_EXPIRES_IN
+        value: 1h
+
+      # Google OAuth (app sign-in).
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_OAUTH_REDIRECT_URI
+        sync: false
+
+      # Corsair (Gmail / Google Calendar integration).
+      - key: CORSAIR_OAUTH_REDIRECT_URI
+        sync: false
+      - key: CORSAIR_DEV_KEY
+        sync: false
+      - key: CORSAIR_KEK
+        sync: false
+
+      # Cloudinary (avatar uploads).
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # Resend (transactional email).
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+
+      # AI providers.
+      - key: GROQ_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false

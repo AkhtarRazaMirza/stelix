@@ -1,0 +1,120 @@
+name: CI
+
+# PR / push gate: type-check, test, and build both packages against a real
+# Postgres. Merges to main are blocked unless every job here is green.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server (typecheck · test · build)
+    runs-on: ubuntu-latest
+
+    # A throwaway Postgres so the integration tests that need a real DB run in
+    # CI exactly as they would in production, instead of being skipped.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Non-secret placeholders so env.ts validation passes in CI. These are
+      # test-only values, never real credentials.
+      NODE_ENV: development
+      DATABASE_URL: postgres://test:test@localhost:5432/test
+      GOOGLE_OAUTH_CLIENT_ID: test-client-id
+      GOOGLE_OAUTH_CLIENT_SECRET: test-client-secret
+      GOOGLE_OAUTH_REDIRECT_URI: http://localhost:8000/api/auth/google/callback
+      CLOUDINARY_CLOUD_NAME: test-cloud
+      CLOUDINARY_API_KEY: test-key
+      CLOUDINARY_API_SECRET: test-secret
+      RESEND_API_KEY: test-resend
+      EMAIL_FROM: test@example.com
+      JWT_ACCESS_TOKEN_SECRET: test-access-secret
+      JWT_ACCESS_TOKEN_EXPIRES_IN: 7d
+      JWT_EMAIL_VARIFICATION_TOKEN_SECRET: test-email-secret
+      JWT_EMAIL_VARIFICATION_TOKEN_EXPIRES_IN: 1h
+      JWT_PASSWORD_RESET_SECRET: test-reset-secret
+      JWT_PASSWORD_RESET_EXPIRES_IN: 1h
+      APP_URL: http://localhost:3000
+      CORS_ORIGIN: http://localhost:3000
+      GROQ_API_KEY: test-groq-key
+      TAVILY_API_KEY: test-tavily-key
+      CORSAIR_DEV_KEY: test-corsair-dev-key
+      CORSAIR_KEK: test-corsair-kek
+
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      # Reproducible install from the committed lockfile.
+      - run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Apply migrations to the CI database
+        run: npm run build && npm run migrate
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  client:
+    name: Client (lint · build)
+    runs-on: ubuntu-latest
+
+    env:
+      # Public build-time config; safe placeholders for the CI build.
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: test-google-client-id
+
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

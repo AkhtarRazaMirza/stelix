@@ -1,12 +1,33 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { inArray } from "drizzle-orm";
 
+// The real AssistantService makes two distinct kinds of Groq calls:
+//   1. intent classification — system prompt asks for a single intent word,
+//      and the service only accepts one of its VALID_INTENTS in response;
+//   2. content generation (inbox summary) — returns free-form prose.
+// A single "Mock AI summary" stub breaks classification (that string is not a
+// valid intent, so every message fell through to the help text). Mock by call
+// shape: derive the intent from the user message for classification calls,
+// return the summary text otherwise.
 vi.mock("../config/ai.js", () => ({
   getGroqClient: vi.fn(() => ({
     chat: {
       completions: {
-        create: vi.fn(async () => ({
-          choices: [{ message: { content: "Mock AI summary" } }],
-        })),
+        create: vi.fn(async (params: any) => {
+          const messages = params?.messages ?? [];
+          const system = String(messages[0]?.content ?? "");
+          const isClassification = system.includes("intent classifier");
+
+          if (isClassification) {
+            const userMessage = String(messages[1]?.content ?? "").toLowerCase();
+            const intent = userMessage.includes("inbox") || userMessage.includes("email")
+              ? "email"
+              : "unknown";
+            return { choices: [{ message: { content: intent } }] };
+          }
+
+          return { choices: [{ message: { content: "Mock AI summary" } }] };
+        }),
       },
     },
   })),
@@ -23,6 +44,8 @@ import { AssistantService } from "../services/assistant.service.js";
 import { IntegrationGuard } from "../services/integration.guard.js";
 import type { CorsairService } from "../services/corsair.service.js";
 import type { IntegrationRepository } from "../repositories/integration.repository.js";
+import { db } from "../config/db.js";
+import { aiChatsTable, usersTable } from "../db/schema.js";
 
 const USER_A = "11111111-1111-1111-1111-111111111111";
 const USER_B = "22222222-2222-2222-2222-222222222222";
@@ -166,6 +189,27 @@ describe("multi-user data isolation", () => {
     repository
   );
   const assistantService = new AssistantService(emailService, calendarService);
+
+  // AssistantService.handle persists chat rows to ai_chats, whose user_id has a
+  // FK to users. Seed the two test users (and clean up after) so the persisted
+  // rows satisfy the constraint. Everything else in this suite is mocked; only
+  // the assistant chat-persistence path touches the real database.
+  const TEST_USER_IDS = [USER_A, USER_B];
+
+  beforeAll(async () => {
+    await db
+      .insert(usersTable)
+      .values([
+        { id: USER_A, fullName: "User A", email: "user-a@example.test" },
+        { id: USER_B, fullName: "User B", email: "user-b@example.test" },
+      ])
+      .onConflictDoNothing();
+  });
+
+  afterAll(async () => {
+    // ai_chats rows are removed via ON DELETE CASCADE when the users are deleted.
+    await db.delete(usersTable).where(inArray(usersTable.id, TEST_USER_IDS));
+  });
 
   it("returns Gmail A for user A and Gmail B for user B", async () => {
     const emailsA = await emailService.getEmails(USER_A);

@@ -1,7 +1,11 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import compression from "compression";
+import { sql } from "drizzle-orm";
 import { env } from "../env.js";
+import { db } from "./db.js";
+import { logger } from "./logger.js";
 import { authRoutes } from "../routes/auth.router.js";
 import { emailRoutes } from "../routes/email.routes.js";
 import { calendarRoutes } from "../routes/calendar.routes.js";
@@ -27,6 +31,11 @@ export function serverConfig() {
   // Security headers first so they apply to every response, including errors.
   app.use(securityHeaders());
 
+  // Gzip responses. Cheap CPU for a large bandwidth/latency win on JSON
+  // payloads (dashboard, agent) and OAuth redirects. Placed before routes so
+  // every response body is eligible.
+  app.use(compression());
+
   app.use(requestIdMiddleware);
   app.use(express.json());
   app.use(cookieParser());
@@ -40,12 +49,39 @@ export function serverConfig() {
     })
   );
 
-  app.get("/api/health", (_req, res) => {
-    res.send({
+  // --- Health / liveness / readiness probes -----------------------------
+  // Declared BEFORE the rate limiter and CSRF so platform health checks are
+  // never throttled or blocked. All are unauthenticated and reveal no
+  // internal detail beyond up/down status.
+
+  // Liveness + backwards-compatible health check. Answers "is the process
+  // running?" — used by Render's health check. Does NOT touch the DB so a
+  // transient DB blip doesn't cause the platform to kill a healthy process.
+  const liveness = (_req: express.Request, res: express.Response) => {
+    res.status(200).json({
       success: true,
       status: 200,
       message: "server is up and running",
     });
+  };
+  app.get("/api/health", liveness);
+  app.get("/api/live", liveness);
+
+  // Readiness — answers "can this instance serve traffic?" by checking the
+  // database is reachable. Returns 503 when the DB is down so a load balancer
+  // can route away from this instance without killing it.
+  app.get("/api/ready", async (_req, res) => {
+    try {
+      await db.execute(sql`select 1`);
+      res.status(200).json({ success: true, status: 200, database: "up" });
+    } catch (error) {
+      logger.error("Readiness check failed: database unreachable", {
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+      res
+        .status(503)
+        .json({ success: false, status: 503, database: "down" });
+    }
   });
 
   // Global rate limit: 100 requests per minute per user/IP
