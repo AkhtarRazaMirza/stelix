@@ -1,12 +1,13 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import { memo, useMemo } from "react";
 import {
   PenSquare,
   CalendarPlus,
   Users,
   Inbox,
   Calendar,
+  type LucideIcon,
 } from "lucide-react";
 
 export interface QuickAction {
@@ -71,8 +72,17 @@ export function buildQuickActions({
   ];
 }
 
-export function QuickActions(props: QuickActionsProps) {
-  const actions = buildQuickActions(props);
+function QuickActionsComponent(props: QuickActionsProps) {
+  const actions = useMemo(
+    () => buildQuickActions(props),
+    [
+      props.onCompose,
+      props.onCreateEvent,
+      props.onScheduleMeeting,
+      props.onOpenInbox,
+      props.onOpenCalendar,
+    ]
+  );
 
   return (
     <section aria-label="Quick actions">
@@ -105,3 +115,5 @@ export function QuickActions(props: QuickActionsProps) {
     </section>
   );
 }
+
+export const QuickActions = memo(QuickActionsComponent);
