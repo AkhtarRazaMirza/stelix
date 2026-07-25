@@ -141,85 +141,63 @@ export function useCommandCenter(): CommandCenterState {
     // Accumulate the assembled snapshot for the module cache.
     const snapshot: Partial<CommandCenterData> = {};
 
-    let integrationsState: { gmail: boolean; calendar: boolean };
-    try {
-      integrationsState = await fetchIntegrationsState();
-    } catch {
-      // Can't determine connection state — surface a retryable error in
-      // each section while leaving the page shell intact.
-      if (isCurrent()) {
-        setInbox((prev) => ({ ...prev, status: "error" }));
-        setSent((prev) => ({ ...prev, status: "error" }));
-        setCalendar((prev) => ({ ...prev, status: "error" }));
-        setIntegrationsReady(true);
-        setRefreshing(false);
-      }
+    const [integrationsRes, inboxRes, sentRes, calendarRes] =
+      await Promise.allSettled([
+        fetchIntegrationsState(),
+        fetchInboxSection(),
+        fetchSentEmails(),
+        fetchCalendarSection(),
+      ]);
+
+    if (!isCurrent()) return;
+
+    if (integrationsRes.status === "rejected") {
+      setInbox((prev) => ({ ...prev, status: "error" }));
+      setSent((prev) => ({ ...prev, status: "error" }));
+      setCalendar((prev) => ({ ...prev, status: "error" }));
+      setIntegrationsReady(true);
+      setRefreshing(false);
       return;
     }
 
-    if (!isCurrent()) return;
+    const integrationsState = integrationsRes.value;
     setIntegrations(integrationsState);
     setIntegrationsReady(true);
     snapshot.integrations = integrationsState;
 
-    const tasks: Promise<void>[] = [];
-
-    // Inbox + sent (Gmail).
-    if (integrationsState.gmail) {
-      tasks.push(
-        fetchInboxSection().then(
-          (section) => {
-            if (!isCurrent()) return;
-            setInbox({ status: "connected", ...section });
-            snapshot.inbox = { status: "connected", ...section };
-          },
-          () => {
-            if (!isCurrent()) return;
-            setInbox({ status: "error", emails: [], unreadCount: 0 });
-          }
-        )
-      );
-
-      tasks.push(
-        fetchSentEmails().then(
-          (emails) => {
-            if (!isCurrent()) return;
-            setSent({ status: "connected", emails });
-            snapshot.sentEmails = emails;
-          },
-          () => {
-            if (!isCurrent()) return;
-            setSent({ status: "error", emails: [] });
-          }
-        )
-      );
+    // Inbox
+    if (integrationsState.gmail && inboxRes.status === "fulfilled") {
+      setInbox({ status: "connected", ...inboxRes.value });
+      snapshot.inbox = { status: "connected", ...inboxRes.value };
+    } else if (integrationsState.gmail) {
+      setInbox({ status: "error", emails: [], unreadCount: 0 });
     } else {
       setInbox({ status: "not-connected", emails: [], unreadCount: 0 });
-      setSent({ status: "not-connected", emails: [] });
       snapshot.inbox = { status: "not-connected", emails: [], unreadCount: 0 };
+    }
+
+    // Sent
+    if (integrationsState.gmail && sentRes.status === "fulfilled") {
+      setSent({ status: "connected", emails: sentRes.value });
+      snapshot.sentEmails = sentRes.value;
+    } else if (integrationsState.gmail) {
+      setSent({ status: "error", emails: [] });
+    } else {
+      setSent({ status: "not-connected", emails: [] });
       snapshot.sentEmails = [];
     }
 
-    // Calendar.
-    if (integrationsState.calendar) {
-      tasks.push(
-        fetchCalendarSection().then(
-          (section) => {
-            if (!isCurrent()) return;
-            setCalendar({ status: "connected", ...section });
-            snapshot.calendar = { status: "connected", ...section };
-          },
-          () => {
-            if (!isCurrent()) return;
-            setCalendar({
-              status: "error",
-              events: [],
-              upcoming: [],
-              todayCount: 0,
-            });
-          }
-        )
-      );
+    // Calendar
+    if (integrationsState.calendar && calendarRes.status === "fulfilled") {
+      setCalendar({ status: "connected", ...calendarRes.value });
+      snapshot.calendar = { status: "connected", ...calendarRes.value };
+    } else if (integrationsState.calendar) {
+      setCalendar({
+        status: "error",
+        events: [],
+        upcoming: [],
+        todayCount: 0,
+      });
     } else {
       setCalendar({
         status: "not-connected",
@@ -234,8 +212,6 @@ export function useCommandCenter(): CommandCenterState {
         todayCount: 0,
       };
     }
-
-    await Promise.allSettled(tasks);
 
     if (isCurrent()) {
       setRefreshing(false);
