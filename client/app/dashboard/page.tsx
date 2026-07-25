@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -36,40 +36,47 @@ type DashboardData = {
   }[];
 };
 
+const CACHE_TTL_MS = 60_000;
+let dashboardCache: { data: DashboardData; fetchedAt: number } | null = null;
+
 export default function DashboardPage() {
   const router = useRouter();
 
-  const [data, setData] =
-    useState<DashboardData | null>(
-      null
-    );
+  const [data, setData] = useState<DashboardData | null>(
+    dashboardCache ? dashboardCache.data : null
+  );
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(!dashboardCache);
 
-  const [error, setError] =
-    useState("");
+  const [error, setError] = useState("");
 
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async (background = false) => {
     try {
-      setLoading(true);
+      if (!background) {
+        setLoading(true);
+      }
 
-      const response =
-        await getDashboard();
+      const response = await getDashboard();
 
+      dashboardCache = { data: response, fetchedAt: Date.now() };
       setData(response);
+      setError("");
     } catch {
-      setError(
-        "Failed to load dashboard."
-      );
+      if (!dashboardCache) {
+        setError("Failed to load dashboard.");
+      }
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    const isFresh =
+      dashboardCache && Date.now() - dashboardCache.fetchedAt < CACHE_TTL_MS;
+    if (!isFresh) {
+      loadDashboard(Boolean(dashboardCache));
+    }
+  }, [loadDashboard]);
 
   const hour = new Date().getHours();
 
