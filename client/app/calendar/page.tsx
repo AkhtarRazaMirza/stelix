@@ -97,8 +97,17 @@ export default function CalendarPage() {
 
   const loadEvents = useCallback(async () => {
     try {
-      const { integrations } = await getIntegrations();
-      const calendar = integrations.find(
+      const [integrationsRes, eventsRes] = await Promise.allSettled([
+        getIntegrations(),
+        getEventsList(),
+      ]);
+
+      if (integrationsRes.status === "rejected") {
+        setPageState("error");
+        return;
+      }
+
+      const calendar = integrationsRes.value.integrations.find(
         (item) => item.provider === "googlecalendar"
       );
 
@@ -107,9 +116,12 @@ export default function CalendarPage() {
         return;
       }
 
-      const data = await getEventsList();
-      setEvents(data.events);
-      setPageState("ready");
+      if (eventsRes.status === "fulfilled") {
+        setEvents(eventsRes.value.events);
+        setPageState("ready");
+      } else {
+        setPageState("error");
+      }
     } catch {
       setPageState("error");
     }
