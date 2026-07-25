@@ -14,11 +14,9 @@ import {
   Users,
 } from "lucide-react";
 
+import dynamic from "next/dynamic";
+
 import { AppShell } from "@/components/layout/app-shell";
-import { ComposeEmailModal } from "@/components/mail/compose-email-modal";
-import { CreateEventModal } from "@/components/calendar/create-event-modal";
-import { EventDetails } from "@/components/calendar/event-details";
-import { RescheduleModal } from "@/components/calendar/reschedule-modal";
 import { toDateTimeLocalValue } from "@/components/calendar/calendar-utils";
 
 import { CommandBar } from "@/components/command-center/command-bar";
@@ -31,10 +29,28 @@ import { ActivityFeed } from "@/components/command-center/activity-feed";
 import { AiAssistantPanel } from "@/components/command-center/ai-assistant-panel";
 import { CommandCenterLoadingState } from "@/components/command-center/loading-state";
 import { CommandCenterErrorState } from "@/components/command-center/error-state";
-import {
-  CommandPalette,
-  type CommandItem,
-} from "@/components/command-center/command-palette";
+import type { CommandItem } from "@/components/command-center/command-palette";
+
+const ComposeEmailModal = dynamic(
+  () => import("@/components/mail/compose-email-modal").then((m) => m.ComposeEmailModal),
+  { ssr: false }
+);
+const CreateEventModal = dynamic(
+  () => import("@/components/calendar/create-event-modal").then((m) => m.CreateEventModal),
+  { ssr: false }
+);
+const EventDetails = dynamic(
+  () => import("@/components/calendar/event-details").then((m) => m.EventDetails),
+  { ssr: false }
+);
+const RescheduleModal = dynamic(
+  () => import("@/components/calendar/reschedule-modal").then((m) => m.RescheduleModal),
+  { ssr: false }
+);
+const CommandPalette = dynamic(
+  () => import("@/components/command-center/command-palette").then((m) => m.CommandPalette),
+  { ssr: false }
+);
 
 import { useCommandCenter } from "@/hooks/use-command-center";
 import { getEvent } from "@/lib/api/calendar";
