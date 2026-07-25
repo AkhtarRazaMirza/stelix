@@ -9,6 +9,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 
+import dynamic from "next/dynamic";
+
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -18,12 +20,22 @@ import { MonthView } from "@/components/calendar/month-view";
 import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
 import { AgendaView } from "@/components/calendar/agenda-view";
-import { EventDetails } from "@/components/calendar/event-details";
-import { CreateEventModal } from "@/components/calendar/create-event-modal";
-import { RescheduleModal } from "@/components/calendar/reschedule-modal";
 import { CalendarLoadingState } from "@/components/calendar/loading-state";
 import { CalendarEmptyState } from "@/components/calendar/empty-state";
 import { CalendarErrorState } from "@/components/calendar/error-state";
+
+const EventDetails = dynamic(
+  () => import("@/components/calendar/event-details").then((m) => m.EventDetails),
+  { ssr: false }
+);
+const CreateEventModal = dynamic(
+  () => import("@/components/calendar/create-event-modal").then((m) => m.CreateEventModal),
+  { ssr: false }
+);
+const RescheduleModal = dynamic(
+  () => import("@/components/calendar/reschedule-modal").then((m) => m.RescheduleModal),
+  { ssr: false }
+);
 import {
   addDays,
   monthLabel,
