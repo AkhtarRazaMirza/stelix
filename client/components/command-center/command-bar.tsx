@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Search, RefreshCw } from "lucide-react";
 
 interface CommandBarProps {
@@ -10,7 +11,7 @@ interface CommandBarProps {
   refreshing: boolean;
 }
 
-export function CommandBar({
+function CommandBarComponent({
   greeting,
   subtitle,
   onOpenPalette,
@@ -52,3 +53,5 @@ export function CommandBar({
     </header>
   );
 }
+
+export const CommandBar = memo(CommandBarComponent);
