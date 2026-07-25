@@ -31,25 +31,34 @@ export class DashboardService {
       (integration) => integration.provider === "googlecalendar"
     );
 
-    const emailsStart = Date.now();
-    const emails = hasGmail
-      ? await this.emailService.getEmails(userId)
-      : [];
-    logger.info("[perf] email fetch", {
-      userId,
-      ms: Date.now() - emailsStart,
-      emailCount: emails.length,
-    });
+    const fetchEmails = async (): Promise<MappedEmail[]> => {
+      if (!hasGmail) return [];
+      const emailsStart = Date.now();
+      const res = await this.emailService.getEmails(userId);
+      logger.info("[perf] email fetch", {
+        userId,
+        ms: Date.now() - emailsStart,
+        emailCount: res.length,
+      });
+      return res;
+    };
 
-    const eventsStart = Date.now();
-    const events = hasCalendar
-      ? await this.calendarService.getUpcomingEvents(userId)
-      : [];
-    logger.info("[perf] calendar fetch", {
-      userId,
-      ms: Date.now() - eventsStart,
-      eventCount: events.length,
-    });
+    const fetchEvents = async () => {
+      if (!hasCalendar) return [];
+      const eventsStart = Date.now();
+      const res = await this.calendarService.getUpcomingEvents(userId);
+      logger.info("[perf] calendar fetch", {
+        userId,
+        ms: Date.now() - eventsStart,
+        eventCount: res.length,
+      });
+      return res;
+    };
+
+    const [emails, events] = await Promise.all([
+      fetchEmails(),
+      fetchEvents(),
+    ]);
 
     const aiSummaryStart = Date.now();
     const aiSummary = hasGmail
