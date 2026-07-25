@@ -252,8 +252,10 @@ Maximum 150 words.
 
   async getFocusToday(userId: string) {
     try {
-      const emails = await this.emailService.getEmails(userId);
-      const events = await this.calendarService.getUpcomingEvents(userId);
+      const [emails, events] = await Promise.all([
+        this.emailService.getEmails(userId),
+        this.calendarService.getUpcomingEvents(userId),
+      ]);
 
       logger.info("Generating focus briefing", {
         userId,
