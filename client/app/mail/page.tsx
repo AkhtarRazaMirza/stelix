@@ -61,22 +61,34 @@ export default function MailPage() {
 
   const loadList = useCallback(async (target: MailView) => {
     try {
-      const { integrations } = await getIntegrations();
-      const gmail = integrations.find((item) => item.provider === "gmail");
-
       setSelected(null);
       setSelectedId(null);
+
+      const [integrationsRes, mailRes] = await Promise.allSettled([
+        getIntegrations(),
+        target === "inbox" ? getInbox() : getSentEmails(),
+      ]);
+
+      if (integrationsRes.status === "rejected") {
+        setListState("error");
+        return;
+      }
+
+      const gmail = integrationsRes.value.integrations.find(
+        (item) => item.provider === "gmail"
+      );
 
       if (!gmail?.connected) {
         setListState("not-connected");
         return;
       }
 
-      const data =
-        target === "inbox" ? await getInbox() : await getSentEmails();
-
-      setEmails(data.emails);
-      setListState("ready");
+      if (mailRes.status === "fulfilled") {
+        setEmails(mailRes.value.emails);
+        setListState("ready");
+      } else {
+        setListState("error");
+      }
     } catch {
       setListState("error");
     }
