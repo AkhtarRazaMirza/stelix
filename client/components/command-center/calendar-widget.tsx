@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { Calendar, ArrowRight, MapPin } from "lucide-react";
 
 import type { EventSummary } from "@/types/calendar";
@@ -53,13 +53,17 @@ function CalendarWidgetComponent({
   onConnect,
   onRetry,
 }: CalendarWidgetProps) {
-  const todayEvents = events
-    .filter((event) => isToday(event.startTime))
-    .sort(
-      (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-    )
-    .slice(0, MAX_VISIBLE);
+  const todayEvents = useMemo(
+    () =>
+      events
+        .filter((event) => isToday(event.startTime))
+        .sort(
+          (a, b) =>
+            new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+        )
+        .slice(0, MAX_VISIBLE),
+    [events]
+  );
 
   return (
     <WidgetCard
