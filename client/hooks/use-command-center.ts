@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   fetchIntegrationsState,
@@ -284,13 +284,18 @@ export function useCommandCenter(): CommandCenterState {
 
   const refresh = useCallback(() => load(true), [load]);
 
+  const metrics = useMemo(
+    () => deriveMetrics(inbox, sent, calendar),
+    [inbox, sent, calendar]
+  );
+
   return {
     integrations,
     integrationsReady,
     inbox,
     sent,
     calendar,
-    metrics: deriveMetrics(inbox, sent, calendar),
+    metrics,
     refreshing,
     refresh,
   };
