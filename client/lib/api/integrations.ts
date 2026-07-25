@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { invalidateCommandCenterCache } from "./command-center-cache";
 
 export function getIntegrations() {
   return apiFetch<{
@@ -11,6 +12,7 @@ export function getIntegrations() {
 }
 
 export function connectIntegration(provider: string) {
+  invalidateCommandCenterCache();
   return apiFetch<{ url: string }>(
     `/integrations/${provider}/connect`,
     {
@@ -20,6 +22,7 @@ export function connectIntegration(provider: string) {
 }
 
 export function disconnectIntegration(id: string) {
+  invalidateCommandCenterCache();
   return apiFetch<{ success: boolean }>(`/integrations/${id}`, {
     method: "DELETE",
   });

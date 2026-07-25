@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { invalidateCommandCenterCache } from "./command-center-cache";
 import type {
   CreateEventInput,
   EventDetail,
@@ -58,6 +59,7 @@ export function getEvent(eventId: string) {
 }
 
 export function createEvent(input: CreateEventInput) {
+  invalidateCommandCenterCache(["todays-events", "dashboard-metrics"]);
   return apiFetch<{ event: EventDetail }>("/calendar/events", {
     method: "POST",
     body: JSON.stringify(input),
@@ -65,6 +67,7 @@ export function createEvent(input: CreateEventInput) {
 }
 
 export function updateEvent(eventId: string, input: UpdateEventInput) {
+  invalidateCommandCenterCache(["todays-events", "dashboard-metrics"]);
   return apiFetch<{ event: EventDetail }>(
     `/calendar/events/${encodeURIComponent(eventId)}`,
     {
@@ -75,6 +78,7 @@ export function updateEvent(eventId: string, input: UpdateEventInput) {
 }
 
 export function deleteEvent(eventId: string) {
+  invalidateCommandCenterCache(["todays-events", "dashboard-metrics"]);
   return apiFetch<{ success: boolean }>(
     `/calendar/events/${encodeURIComponent(eventId)}`,
     {
@@ -84,6 +88,7 @@ export function deleteEvent(eventId: string) {
 }
 
 export function inviteAttendees(input: CreateEventInput) {
+  invalidateCommandCenterCache(["todays-events", "dashboard-metrics"]);
   return apiFetch<{ event: EventDetail }>("/calendar/invite", {
     method: "POST",
     body: JSON.stringify(input),
@@ -91,6 +96,7 @@ export function inviteAttendees(input: CreateEventInput) {
 }
 
 export function rescheduleEvent(input: RescheduleEventInput) {
+  invalidateCommandCenterCache(["todays-events", "dashboard-metrics"]);
   return apiFetch<{ event: EventDetail }>("/calendar/reschedule", {
     method: "POST",
     body: JSON.stringify(input),

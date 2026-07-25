@@ -1,4 +1,5 @@
 import { apiFetch } from "./client";
+import { invalidateCommandCenterCache } from "./command-center-cache";
 import type {
   EmailDetail,
   InboxPage,
@@ -35,6 +36,7 @@ export function getEmail(emailId: string) {
 }
 
 export function sendEmail(input: SendEmailInput) {
+  invalidateCommandCenterCache(["inbox-preview", "sent-preview", "dashboard-metrics"]);
   return apiFetch<SendEmailResult>("/gmail/send", {
     method: "POST",
     body: JSON.stringify(input),
@@ -42,6 +44,7 @@ export function sendEmail(input: SendEmailInput) {
 }
 
 export function refreshInbox() {
+  invalidateCommandCenterCache(["inbox-preview", "sent-preview", "dashboard-metrics"]);
   return apiFetch<InboxPage>("/gmail/refresh", {
     method: "POST",
   });

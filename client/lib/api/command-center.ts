@@ -1,6 +1,10 @@
 import { getInbox, getSentEmails } from "./gmail";
 import { getEventsList } from "./calendar";
 import { getIntegrations } from "./integrations";
+import {
+  getOrLoadCommandCenterCache,
+  type CommandCenterCacheKey,
+} from "./command-center-cache";
 import type { EmailSummary } from "@/types/gmail";
 import type { EventSummary } from "@/types/calendar";
 
@@ -168,37 +172,38 @@ export interface CalendarSection {
   todayCount: number;
 }
 
-export async function fetchIntegrationsState(): Promise<IntegrationsState> {
-  const { integrations } = await getIntegrations();
+import { CACHE_TTL_MS } from "./command-center-cache";
 
-  return {
-    gmail: integrations.some(
-      (item) => item.provider === "gmail" && item.connected
-    ),
-    calendar: integrations.some(
-      (item) => item.provider === "googlecalendar" && item.connected
-    ),
-  };
+export async function fetchIntegrationsState(): Promise<IntegrationsState> {
+  return getOrLoadCommandCenterCache("integrations", CACHE_TTL_MS.integrations, async () => {
+    const { integrations } = await getIntegrations();
+    return {
+      gmail: integrations.some((item) => item.provider === "gmail" && item.connected),
+      calendar: integrations.some((item) => item.provider === "googlecalendar" && item.connected),
+    };
+  });
 }
 
 export async function fetchInboxSection(): Promise<InboxSection> {
-  const { emails } = await getInbox();
-  return {
-    emails,
-    unreadCount: emails.filter((email) => !email.isRead).length,
-  };
+  return getOrLoadCommandCenterCache("inbox-preview", CACHE_TTL_MS["inbox-preview"], async () => {
+    const { emails } = await getInbox();
+    return { emails, unreadCount: emails.filter((email) => !email.isRead).length };
+  });
 }
 
 export async function fetchSentEmails(): Promise<EmailSummary[]> {
-  const { emails } = await getSentEmails();
-  return emails;
+  return getOrLoadCommandCenterCache(
+    "sent-preview", CACHE_TTL_MS["sent-preview"], async () => (await getSentEmails()).emails
+  );
 }
 
 export async function fetchCalendarSection(): Promise<CalendarSection> {
-  const { events } = await getEventsList();
-  return {
-    events,
-    upcoming: sortUpcoming(events),
-    todayCount: events.filter((event) => isToday(event.startTime)).length,
-  };
+  return getOrLoadCommandCenterCache("todays-events", CACHE_TTL_MS["todays-events"], async () => {
+    const { events } = await getEventsList();
+    return {
+      events,
+      upcoming: sortUpcoming(events),
+      todayCount: events.filter((event) => isToday(event.startTime)).length,
+    };
+  });
 }

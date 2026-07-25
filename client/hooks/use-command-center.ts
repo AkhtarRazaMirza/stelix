@@ -11,6 +11,7 @@ import {
   type CommandCenterMetrics,
   type SectionStatus,
 } from "@/lib/api/command-center";
+import { invalidateCommandCenterCache } from "@/lib/api/command-center-cache";
 import type { EmailSummary } from "@/types/gmail";
 import type { EventSummary } from "@/types/calendar";
 
@@ -258,7 +259,10 @@ export function useCommandCenter(): CommandCenterState {
     };
   }, [load]);
 
-  const refresh = useCallback(() => load(true), [load]);
+  const refresh = useCallback(() => {
+    invalidateCommandCenterCache();
+    return load(true);
+  }, [load]);
 
   const metrics = useMemo(
     () => deriveMetrics(inbox, sent, calendar),
