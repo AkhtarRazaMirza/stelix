@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import {
   Activity,
   Send,
@@ -82,7 +82,10 @@ function ActivityFeedComponent({
   sentEmails,
   recentEvents,
 }: ActivityFeedProps) {
-  const items = buildActivity(sentEmails, recentEvents);
+  const items = useMemo(
+    () => buildActivity(sentEmails, recentEvents),
+    [sentEmails, recentEvents]
+  );
 
   return (
     <WidgetCard title="Activity" icon={Activity} className="min-h-[12rem]">
