@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 process.env.NODE_ENV = "development";
 process.env.GOOGLE_OAUTH_CLIENT_ID ??= "test-client-id";
 process.env.GOOGLE_OAUTH_CLIENT_SECRET ??= "test-client-secret";

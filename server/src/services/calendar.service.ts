@@ -140,11 +140,18 @@ function toEventResource(
   return resource;
 }
 
+const CALENDAR_CACHE_TTL_MS = 15_000;
+const upcomingEventsCache = new Map<string, { events: MappedCalendarEvent[]; fetchedAt: number }>();
+
 export class CalendarService {
   constructor(
     private readonly integrationGuard = new IntegrationGuard(),
     private readonly corsairService = new CorsairService()
   ) {}
+
+  clearCache(userId: string) {
+    upcomingEventsCache.delete(userId);
+  }
 
   private resolveCalendar(userId: string) {
     const tenant = this.corsairService.resolveTenant(userId);
@@ -170,16 +177,30 @@ export class CalendarService {
     userId: string,
     limit = 5
   ): Promise<MappedCalendarEvent[]> {
-    const events = await this.getEvents(userId);
-    const now = Date.now();
+    const cached = upcomingEventsCache.get(userId);
+    if (cached && Date.now() - cached.fetchedAt < CALENDAR_CACHE_TTL_MS) {
+      return cached.events.slice(0, limit);
+    }
 
-    return events
-      .filter((event) => {
-        const start = Date.parse(event.start);
-        return Number.isFinite(start) && start >= now;
-      })
-      .sort((a, b) => Date.parse(a.start) - Date.parse(b.start))
-      .slice(0, limit);
+    await this.integrationGuard.requireIntegration(userId, "googlecalendar");
+
+    this.corsairService.logProviderOperation(
+      userId,
+      "googlecalendar",
+      "upcoming_events"
+    );
+
+    const tenant = this.corsairService.resolveTenant(userId);
+    const result = await tenant.googlecalendar.api.events.getMany({
+      singleEvents: true,
+      orderBy: "startTime",
+      timeMin: new Date().toISOString(),
+      maxResults: limit,
+    });
+
+    const events = (result.items ?? []).map(mapEvent);
+    upcomingEventsCache.set(userId, { events, fetchedAt: Date.now() });
+    return events;
   }
 
   async listEvents(
@@ -290,6 +311,7 @@ export class CalendarService {
     notifyAttendees = false
   ): Promise<EventDetail> {
     await this.integrationGuard.requireIntegration(userId, "googlecalendar");
+    this.clearCache(userId);
 
     this.corsairService.logProviderOperation(
       userId,
@@ -315,6 +337,7 @@ export class CalendarService {
     notifyAttendees = false
   ): Promise<EventDetail> {
     await this.integrationGuard.requireIntegration(userId, "googlecalendar");
+    this.clearCache(userId);
 
     this.corsairService.logProviderOperation(
       userId,
@@ -355,6 +378,7 @@ export class CalendarService {
 
   async deleteEvent(userId: string, eventId: string): Promise<void> {
     await this.integrationGuard.requireIntegration(userId, "googlecalendar");
+    this.clearCache(userId);
 
     this.corsairService.logProviderOperation(
       userId,

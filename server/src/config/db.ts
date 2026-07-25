@@ -27,7 +27,7 @@ export const pool = new Pool({
   idleTimeoutMillis: 30_000,
   // Fail fast (5s) if a new connection can't be established, instead of hanging.
   connectionTimeoutMillis: 5_000,
-  ...(env.NODE_ENV === "production"
+  ...(env.NODE_ENV === "production" || env.DATABASE_URL.includes("sslmode") || env.DATABASE_URL.includes("neon.tech")
     ? { ssl: { rejectUnauthorized: false } }
     : {}),
 });

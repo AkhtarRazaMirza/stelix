@@ -35,32 +35,47 @@ type GmailListMessage = {
   id: string;
 };
 
+const EMAIL_CACHE_TTL_MS = 15_000;
+const emailCache = new Map<string, { emails: MappedEmail[]; fetchedAt: number }>();
+
 export class EmailService {
   constructor(
     private readonly integrationGuard = new IntegrationGuard(),
     private readonly corsairService = new CorsairService()
   ) {}
 
+  clearCache(userId: string) {
+    emailCache.delete(userId);
+  }
+
   async getEmails(userId: string): Promise<MappedEmail[]> {
     await this.integrationGuard.requireIntegration(userId, "gmail");
+
+    const cached = emailCache.get(userId);
+    if (cached && Date.now() - cached.fetchedAt < EMAIL_CACHE_TTL_MS) {
+      return cached.emails;
+    }
 
     this.corsairService.logProviderOperation(userId, "gmail", "list_messages");
 
     const tenant = this.corsairService.resolveTenant(userId);
-    const response = await tenant.gmail.api.messages.list({});
+    const response = await tenant.gmail.api.messages.list({ maxResults: 10 });
 
     const messages = response.messages ?? [];
 
     const emails = await Promise.all(
-      messages.slice(0, 20).map(async (message: GmailListMessage) => {
+      messages.slice(0, 10).map(async (message: GmailListMessage) => {
         const email = await tenant.gmail.api.messages.get({
           id: message.id,
+          format: "metadata",
+          metadataHeaders: ["From", "Subject"],
         });
 
         return mapEmail(email as GmailMessage);
       })
     );
 
+    emailCache.set(userId, { emails, fetchedAt: Date.now() });
     return emails;
   }
 
@@ -74,14 +89,17 @@ export class EmailService {
     const tenant = this.corsairService.resolveTenant(userId);
     const response = await tenant.gmail.api.messages.list({
       q: query,
+      maxResults: 10,
     });
 
     const messages = response.messages ?? [];
 
     const emails = await Promise.all(
-      messages.slice(0, 20).map(async (message: GmailListMessage) => {
+      messages.slice(0, 10).map(async (message: GmailListMessage) => {
         const email = await tenant.gmail.api.messages.get({
           id: message.id,
+          format: "metadata",
+          metadataHeaders: ["From", "Subject"],
         });
 
         return mapEmail(email as GmailMessage);

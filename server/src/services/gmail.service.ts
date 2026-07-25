@@ -162,11 +162,22 @@ function buildRawMessage(input: SendEmailInput): string {
     .replace(/=+$/, "");
 }
 
+const INBOX_CACHE_TTL_MS = 15_000;
+const inboxCache = new Map<string, { data: InboxPage; fetchedAt: number }>();
+
 export class GmailService {
   constructor(
     private readonly integrationGuard = new IntegrationGuard(),
     private readonly corsairService = new CorsairService()
   ) {}
+
+  clearCache(userId: string) {
+    for (const key of inboxCache.keys()) {
+      if (key.startsWith(`${userId}:`)) {
+        inboxCache.delete(key);
+      }
+    }
+  }
 
   private resolveGmail(userId: string) {
     const tenant = this.corsairService.resolveTenant(userId);
@@ -178,6 +189,12 @@ export class GmailService {
     label: GmailLabel,
     options: { pageToken?: string | undefined; query?: string | undefined } = {}
   ): Promise<InboxPage> {
+    const cacheKey = `${userId}:${label}:${options.pageToken ?? ""}:${options.query ?? ""}`;
+    const cached = inboxCache.get(cacheKey);
+    if (cached && Date.now() - cached.fetchedAt < INBOX_CACHE_TTL_MS) {
+      return cached.data;
+    }
+
     await this.integrationGuard.requireIntegration(userId, "gmail");
 
     const gmail = this.resolveGmail(userId);
@@ -203,11 +220,14 @@ export class GmailService {
       })
     );
 
-    return {
+    const result: InboxPage = {
       emails,
       nextPageToken: response.nextPageToken ?? null,
       resultSizeEstimate: response.resultSizeEstimate ?? emails.length,
     };
+
+    inboxCache.set(cacheKey, { data: result, fetchedAt: Date.now() });
+    return result;
   }
 
   async getInbox(userId: string, pageToken?: string): Promise<InboxPage> {
@@ -236,6 +256,7 @@ export class GmailService {
 
   async refreshInbox(userId: string): Promise<InboxPage> {
     this.corsairService.logProviderOperation(userId, "gmail", "inbox_refresh");
+    this.clearCache(userId);
 
     return this.listByLabel(userId, "INBOX", {});
   }
@@ -266,6 +287,7 @@ export class GmailService {
     input: SendEmailInput
   ): Promise<SendEmailResult> {
     await this.integrationGuard.requireIntegration(userId, "gmail");
+    this.clearCache(userId);
 
     this.corsairService.logProviderOperation(userId, "gmail", "send_email", {
       subjectLength: input.subject.length,
