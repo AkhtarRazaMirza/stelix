@@ -20,53 +20,49 @@ function mapRow(row: typeof integrationsTable.$inferSelect): Integration {
   };
 }
 
+const INTEGRATION_CACHE_TTL_MS = 30_000;
+const integrationCache = new Map<string, { data: Integration[]; fetchedAt: number }>();
+
 export class IntegrationRepository {
+  private invalidateCache(userId: string) {
+    integrationCache.delete(userId);
+  }
+
   async getByUserId(userId: string): Promise<Integration[]> {
+    const cached = integrationCache.get(userId);
+    if (cached && Date.now() - cached.fetchedAt < INTEGRATION_CACHE_TTL_MS) {
+      return cached.data;
+    }
+
     const rows = await db
       .select()
       .from(integrationsTable)
       .where(eq(integrationsTable.userId, userId));
 
-    return rows.map(mapRow);
+    const result = rows.map(mapRow);
+    integrationCache.set(userId, { data: result, fetchedAt: Date.now() });
+    return result;
   }
 
   async getByProvider(
     userId: string,
     provider: IntegrationProvider
   ): Promise<Integration | null> {
-    const [row] = await db
-      .select()
-      .from(integrationsTable)
-      .where(
-        and(
-          eq(integrationsTable.userId, userId),
-          eq(integrationsTable.provider, provider)
-        )
-      )
-      .limit(1);
-
-    return row ? mapRow(row) : null;
+    const integrations = await this.getByUserId(userId);
+    return integrations.find((item) => item.provider === provider) ?? null;
   }
 
   async getUserIntegration(
     userId: string,
     integrationId: string
   ): Promise<Integration | null> {
-    const [row] = await db
-      .select()
-      .from(integrationsTable)
-      .where(
-        and(
-          eq(integrationsTable.userId, userId),
-          eq(integrationsTable.id, integrationId)
-        )
-      )
-      .limit(1);
-
-    return row ? mapRow(row) : null;
+    const integrations = await this.getByUserId(userId);
+    return integrations.find((item) => item.id === integrationId) ?? null;
   }
 
   async create(input: CreateIntegrationInput): Promise<Integration> {
+    this.invalidateCache(input.userId);
+
     const [row] = await db
       .insert(integrationsTable)
       .values({
@@ -93,6 +89,10 @@ export class IntegrationRepository {
       .where(eq(integrationsTable.id, integrationId))
       .returning();
 
+    if (row) {
+      this.invalidateCache(row.userId);
+    }
+
     return row ? mapRow(row) : null;
   }
 
@@ -100,7 +100,11 @@ export class IntegrationRepository {
     const result = await db
       .delete(integrationsTable)
       .where(eq(integrationsTable.id, integrationId))
-      .returning({ id: integrationsTable.id });
+      .returning({ id: integrationsTable.id, userId: integrationsTable.userId });
+
+    if (result.length > 0 && result[0]?.userId) {
+      this.invalidateCache(result[0].userId);
+    }
 
     return result.length > 0;
   }
