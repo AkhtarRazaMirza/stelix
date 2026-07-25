@@ -4,6 +4,9 @@ import { IntegrationRepository } from "../repositories/integration.repository.js
 import { EmailService, type MappedEmail } from "./email.service.js";
 import { CalendarService } from "./calendar.service.js";
 
+const SUMMARY_CACHE_TTL_MS = 3 * 60_000;
+const aiSummaryCache = new Map<string, { summary: string; fetchedAt: number; signature: string }>();
+
 export class DashboardService {
   constructor(
     private readonly emailService = new EmailService(),
@@ -89,6 +92,18 @@ export class DashboardService {
       return "No emails found.";
     }
 
+    const signature = emails.slice(0, 10).map((e) => e.id).join(",");
+    const cached = aiSummaryCache.get(userId);
+
+    if (
+      cached &&
+      cached.signature === signature &&
+      Date.now() - cached.fetchedAt < SUMMARY_CACHE_TTL_MS
+    ) {
+      logger.info("Serving cached dashboard AI summary", { userId });
+      return cached.summary;
+    }
+
     logger.info("Generating dashboard AI summary", {
       userId,
       emailCount: emails.length,
@@ -131,6 +146,16 @@ Rules:
       ],
     });
 
-    return response.choices?.[0]?.message?.content ?? "";
+    const summary = response.choices?.[0]?.message?.content ?? "";
+
+    if (summary) {
+      aiSummaryCache.set(userId, {
+        summary,
+        fetchedAt: Date.now(),
+        signature,
+      });
+    }
+
+    return summary;
   }
 }
