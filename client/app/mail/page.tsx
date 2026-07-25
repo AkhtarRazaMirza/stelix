@@ -4,14 +4,20 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PenSquare, RefreshCw, Loader2, ArrowLeft } from "lucide-react";
 
+import dynamic from "next/dynamic";
+
 import { AppShell } from "@/components/layout/app-shell";
 import { SearchBar } from "@/components/mail/search-bar";
 import { InboxPanel } from "@/components/mail/inbox-panel";
 import { EmailViewer } from "@/components/mail/email-viewer";
-import { ComposeEmailModal } from "@/components/mail/compose-email-modal";
 import { MailLoadingState } from "@/components/mail/loading-state";
 import { MailEmptyState } from "@/components/mail/empty-state";
 import { MailErrorState } from "@/components/mail/error-state";
+
+const ComposeEmailModal = dynamic(
+  () => import("@/components/mail/compose-email-modal").then((m) => m.ComposeEmailModal),
+  { ssr: false }
+);
 
 import {
   getInbox,
