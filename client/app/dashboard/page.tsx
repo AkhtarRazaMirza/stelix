@@ -94,6 +94,7 @@ export default function DashboardPage() {
         <ErrorState
           title="Failed to load dashboard"
           description={error}
+          onRetry={loadDashboard}
         />
       </AppShell>
     );

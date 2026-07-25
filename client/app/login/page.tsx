@@ -4,52 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-
-import {
-  loginSchema,
-  type LoginInput,
-} from "@/lib/validations/auth";
-
-import { login, loginWithGoogle, ApiError } from "@/lib/api/auth";
+import { loginWithGoogle, ApiError } from "@/lib/api/auth";
 import { GoogleLogin } from "@react-oauth/google";
 
 export default function LoginPage() {
   const router = useRouter();
 
   const [serverError, setServerError] = useState("");
-
-  const {
-    register,
-    handleSubmit,
-    formState: {
-      errors,
-      isSubmitting,
-    },
-  } = useForm<LoginInput>({
-    resolver:
-      zodResolver(loginSchema),
-  });
-
-  async function onSubmit(
-    data: LoginInput
-  ) {
-    try {
-      setServerError("");
-      await login(data);
-
-      router.push("/command-center");
-    } catch (error) {
-      setServerError(
-        error instanceof ApiError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : "Login failed"
-      );
-    }
-  }
 
   async function handleGoogleLogin(
     credentialResponse: { credential?: string }
@@ -94,59 +55,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form
-          onSubmit={handleSubmit(
-            onSubmit
-          )}
-          className="space-y-4"
-        >
-          <div>
-            <input
-              {...register("email")}
-              type="email"
-              placeholder="Email"
-              className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
-            />
-
-            {errors.email && (
-              <p className="mt-1 text-sm text-red-500">
-                {errors.email.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <input
-              {...register(
-                "password"
-              )}
-              type="password"
-              placeholder="Password"
-              className="w-full rounded-lg border border-white/10 bg-black px-4 py-3"
-            />
-
-            {errors.password && (
-              <p className="mt-1 text-sm text-red-500">
-                {
-                  errors.password
-                    .message
-                }
-              </p>
-            )}
-          </div>
-
-          <button
-            disabled={isSubmitting}
-            type="submit"
-            className="w-full rounded-lg bg-white py-3 font-medium text-black disabled:opacity-50"
-          >
-            {isSubmitting
-              ? "Signing In..."
-              : "Sign In"}
-          </button>
-        </form>
-
-        <div className="mt-4 flex justify-center">
+        <div className="flex justify-center">
           <GoogleLogin
             onSuccess={handleGoogleLogin}
             onError={() => {
@@ -154,13 +63,14 @@ export default function LoginPage() {
             }}
           />
         </div>
+
         <p className="mt-6 text-center text-sm text-zinc-400">
-          Don't have an account?{" "}
+          New to Stelix?{" "}
           <Link
             href="/signup"
             className="text-white"
           >
-            Sign Up
+            Get started
           </Link>
         </p>
       </div>

@@ -33,6 +33,20 @@ export async function apiFetch<T>(
     }
   );
 
+  if (response.status === 401) {
+    // Session expired or missing. Redirect to login, preserving the current
+    // page as the post-login destination. Guard against SSR and redirect loops
+    // (don't redirect if already on an auth page).
+    if (typeof window !== "undefined") {
+      const { pathname } = window.location;
+      const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
+      if (!isAuthPage) {
+        window.location.href = `/login?redirect=${encodeURIComponent(pathname)}`;
+      }
+    }
+    throw new ApiError("Session expired. Please sign in again.", "UNAUTHORIZED");
+  }
+
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
     throw new ApiError(

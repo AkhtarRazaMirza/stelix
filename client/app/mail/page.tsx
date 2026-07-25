@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PenSquare, RefreshCw, Loader2 } from "lucide-react";
+import { PenSquare, RefreshCw, Loader2, ArrowLeft } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { SearchBar } from "@/components/mail/search-bar";
@@ -22,6 +22,7 @@ import {
 } from "@/lib/api/gmail";
 import { getIntegrations } from "@/lib/api/integrations";
 import { ApiError } from "@/lib/api/client";
+import { normalizeReplyRecipient } from "@/lib/reply-recipient";
 import type { EmailDetail, EmailSummary, MailView } from "@/types/gmail";
 
 type ListState = "loading" | "ready" | "error" | "not-connected";
@@ -43,6 +44,14 @@ export default function MailPage() {
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTo, setComposeTo] = useState("");
   const [composeSubject, setComposeSubject] = useState("");
+  const [sentNotice, setSentNotice] = useState(false);
+
+  // Auto-dismiss the "email sent" confirmation after a few seconds.
+  useEffect(() => {
+    if (!sentNotice) return;
+    const timer = setTimeout(() => setSentNotice(false), 4000);
+    return () => clearTimeout(timer);
+  }, [sentNotice]);
 
   const loadList = useCallback(async (target: MailView) => {
     try {
@@ -137,7 +146,7 @@ export default function MailPage() {
   }
 
   function handleReply(email: EmailDetail) {
-    setComposeTo(email.from);
+    setComposeTo(normalizeReplyRecipient(email.from));
     setComposeSubject(
       email.subject.startsWith("Re:") ? email.subject : `Re: ${email.subject}`
     );
@@ -153,6 +162,12 @@ export default function MailPage() {
   return (
     <AppShell>
       <div className="flex h-[calc(100vh-7rem)] flex-col gap-4">
+        {sentNotice && (
+          <div className="rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+            Email sent successfully.
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-1 rounded-lg border border-white/10 bg-[#111111] p-1">
             <button
@@ -209,8 +224,8 @@ export default function MailPage() {
         )}
 
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-[360px_1fr]">
-          {/* List panel */}
-          <div className="min-h-0 overflow-y-auto rounded-xl border border-white/10 bg-[#111111]">
+          {/* List panel — hidden on mobile when an email is open */}
+          <div className={`min-h-0 overflow-y-auto rounded-xl border border-white/10 bg-[#111111] ${selected || detailLoading ? "hidden md:block" : "block"}`}>
             {listState === "loading" ? (
               <MailLoadingState />
             ) : listState === "not-connected" ? (
@@ -249,8 +264,20 @@ export default function MailPage() {
             )}
           </div>
 
-          {/* Viewer panel */}
-          <div className="hidden min-h-0 overflow-hidden rounded-xl border border-white/10 bg-[#111111] md:block">
+          {/* Viewer panel — full screen on mobile when email is open, right pane on desktop */}
+          <div className={`min-h-0 overflow-hidden rounded-xl border border-white/10 bg-[#111111] md:block ${selected || detailLoading ? "block" : "hidden"}`}>
+            {/* Mobile back button */}
+            {(selected || detailLoading) && (
+              <div className="flex items-center border-b border-white/10 px-4 py-2 md:hidden">
+                <button
+                  onClick={() => { setSelected(null); setSelectedId(null); }}
+                  className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </button>
+              </div>
+            )}
             {detailLoading ? (
               <div className="flex h-full items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
@@ -279,6 +306,7 @@ export default function MailPage() {
           initialSubject={composeSubject}
           onClose={() => setComposeOpen(false)}
           onSent={() => {
+            setSentNotice(true);
             if (view === "sent") {
               loadList("sent");
             }

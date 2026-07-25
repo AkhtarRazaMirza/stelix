@@ -64,7 +64,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-white/10 px-6">
+    <header className="flex h-16 items-center justify-between border-b border-white/10 px-6 pl-16 md:pl-6">
       <div>
         <h2 className="text-lg font-semibold">
           Command Center
@@ -102,7 +102,7 @@ export function AppHeader() {
 
           <DropdownMenuItem
             onClick={() =>
-              router.push("/profile")
+              router.push("/settings")
             }
           >
             Profile

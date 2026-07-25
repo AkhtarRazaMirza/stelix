@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { PageHeader } from "@/components/ui/page-header";
@@ -16,6 +16,21 @@ export default function AssistantPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Prefill from ?prompt= (e.g. dashboard quick-actions). Runs once on mount so
+  // it never overwrites text the user types. Reading search params here (rather
+  // than useSearchParams) keeps this page statically rendered with no Suspense
+  // boundary required.
+  useEffect(() => {
+    const prompt = new URLSearchParams(window.location.search).get("prompt");
+    if (prompt) {
+      // Intentional setState-in-effect: reading the URL param post-hydration
+      // avoids the hydration mismatch a lazy initializer would cause, and only
+      // fills an empty field so manual input is never overwritten.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInput((current) => (current.length === 0 ? prompt : current));
+    }
+  }, []);
 
   async function handleSend() {
     if (!input.trim()) return;

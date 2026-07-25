@@ -66,6 +66,7 @@ export function EventDetails({
   onUpdated,
 }: EventDetailsProps) {
   const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState("");
   const [attendees, setAttendees] = useState<CalendarAttendee[]>(
     event.attendees
@@ -263,26 +264,53 @@ export function EventDetails({
       </div>
 
       <div className="flex items-center gap-2 border-t border-white/10 p-4">
-        <button
-          onClick={() => onReschedule(event)}
-          className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm transition hover:bg-white/5"
-        >
-          <CalendarClock className="h-4 w-4" />
-          Reschedule
-        </button>
+        {confirmingDelete ? (
+          <>
+            <span className="mr-auto text-sm text-zinc-400">
+              Delete this event?
+            </span>
 
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
-        >
-          {deleting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
-          Delete
-        </button>
+            <button
+              onClick={() => setConfirmingDelete(false)}
+              disabled={deleting}
+              className="rounded-lg border border-white/10 px-3 py-2 text-sm transition hover:bg-white/5 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+            >
+              {deleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Confirm Delete
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => onReschedule(event)}
+              className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm transition hover:bg-white/5"
+            >
+              <CalendarClock className="h-4 w-4" />
+              Reschedule
+            </button>
+
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              disabled={deleting}
+              className="flex items-center gap-2 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
