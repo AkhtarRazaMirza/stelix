@@ -49,19 +49,28 @@ export class EmailService {
   }
 
   async getEmails(userId: string): Promise<MappedEmail[]> {
+    console.time("EmailService.TOTAL");
+
     await this.integrationGuard.requireIntegration(userId, "gmail");
 
     const cached = emailCache.get(userId);
     if (cached && Date.now() - cached.fetchedAt < EMAIL_CACHE_TTL_MS) {
+      console.timeEnd("EmailService.TOTAL");
       return cached.emails;
     }
+
+    console.time("EmailService.messages.list");
 
     this.corsairService.logProviderOperation(userId, "gmail", "list_messages");
 
     const tenant = this.corsairService.resolveTenant(userId);
     const response = await tenant.gmail.api.messages.list({ maxResults: 10 });
 
+    console.timeEnd("EmailService.messages.list");
+
     const messages = response.messages ?? [];
+
+    console.time("EmailService.messages.get");
 
     const emails = await Promise.all(
       messages.slice(0, 10).map(async (message: GmailListMessage) => {
@@ -75,7 +84,10 @@ export class EmailService {
       })
     );
 
+    console.timeEnd("EmailService.messages.get");
+
     emailCache.set(userId, { emails, fetchedAt: Date.now() });
+    console.timeEnd("EmailService.TOTAL");
     return emails;
   }
 

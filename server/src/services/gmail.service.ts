@@ -189,11 +189,16 @@ export class GmailService {
     label: GmailLabel,
     options: { pageToken?: string | undefined; query?: string | undefined } = {}
   ): Promise<InboxPage> {
+    console.time("TOTAL");
+
     const cacheKey = `${userId}:${label}:${options.pageToken ?? ""}:${options.query ?? ""}`;
     const cached = inboxCache.get(cacheKey);
     if (cached && Date.now() - cached.fetchedAt < INBOX_CACHE_TTL_MS) {
+      console.timeEnd("TOTAL");
       return cached.data;
     }
+
+    console.time("messages.list");
 
     await this.integrationGuard.requireIntegration(userId, "gmail");
 
@@ -206,7 +211,11 @@ export class GmailService {
       q: options.query,
     })) as GmailListResponse;
 
+    console.timeEnd("messages.list");
+
     const listMessages = response.messages ?? [];
+
+    console.time("messages.get");
 
     const emails = await Promise.all(
       listMessages.map(async (listMessage) => {
@@ -220,6 +229,8 @@ export class GmailService {
       })
     );
 
+    console.timeEnd("messages.get");
+
     const result: InboxPage = {
       emails,
       nextPageToken: response.nextPageToken ?? null,
@@ -227,6 +238,7 @@ export class GmailService {
     };
 
     inboxCache.set(cacheKey, { data: result, fetchedAt: Date.now() });
+    console.timeEnd("TOTAL");
     return result;
   }
 
