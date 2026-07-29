@@ -164,10 +164,31 @@ function buildRawMessage(input: SendEmailInput): string {
 
 const INBOX_CACHE_TTL_MS = 30_000;
 const MESSAGE_METADATA_CACHE_TTL_MS = 60_000;
+const MAX_INBOX_CACHE_SIZE = 500;
+const MAX_METADATA_CACHE_SIZE = 2_000;
 
 const inboxCache = new Map<string, { data: InboxPage; fetchedAt: number }>();
 export const messageMetadataCache = new Map<string, { data: GmailMessage; fetchedAt: number }>();
 export const inFlightMessageGets = new Map<string, Promise<GmailMessage>>();
+
+function pruneCache<T>(map: Map<string, { fetchedAt: number }>, ttlMs: number, maxSize: number) {
+  const now = Date.now();
+  for (const [key, entry] of map.entries()) {
+    if (now - entry.fetchedAt >= ttlMs) {
+      map.delete(key);
+    }
+  }
+  if (map.size > maxSize) {
+    const overflow = map.size - maxSize;
+    let deleted = 0;
+    for (const key of map.keys()) {
+      map.delete(key);
+      deleted++;
+      if (deleted >= overflow) break;
+    }
+  }
+}
+
 
 export async function fetchMessageWithCache(
   gmailApi: any,
@@ -196,6 +217,7 @@ export async function fetchMessageWithCache(
         metadataHeaders,
       })) as GmailMessage;
       if (res && res.id) {
+        pruneCache(messageMetadataCache, MESSAGE_METADATA_CACHE_TTL_MS, MAX_METADATA_CACHE_SIZE);
         messageMetadataCache.set(res.id, { data: res, fetchedAt: Date.now() });
       }
       return res;
@@ -271,6 +293,7 @@ export class GmailService {
       resultSizeEstimate: response.resultSizeEstimate ?? emails.length,
     };
 
+    pruneCache(inboxCache, INBOX_CACHE_TTL_MS, MAX_INBOX_CACHE_SIZE);
     inboxCache.set(cacheKey, { data: result, fetchedAt: Date.now() });
     return result;
   }
