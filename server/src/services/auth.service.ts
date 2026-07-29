@@ -291,7 +291,6 @@ export class AuthService {
 
             return users.length > 0 ? users[0] : null;
         } catch (error) {
-            console.error("GET USER ERROR:", error);
             throw error;
         }
     }
