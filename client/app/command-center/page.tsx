@@ -244,31 +244,25 @@ export default function CommandCenterPage() {
   const hour = new Date().getHours();
   const greeting = greetingForHour(hour);
 
-  if (!integrationsReady) {
-    return (
-      <AppShell>
-        <CommandCenterLoadingState />
-      </AppShell>
-    );
-  }
-
   const subtitleParts: string[] = [];
-  if (integrations.gmail) {
+  if (integrations.gmail && inbox.status === "connected") {
     subtitleParts.push(
       `${inbox.unreadCount} unread email${inbox.unreadCount === 1 ? "" : "s"
       }`
     );
   }
-  if (integrations.calendar) {
+  if (integrations.calendar && calendar.status === "connected") {
     subtitleParts.push(
       `${calendar.todayCount} meeting${calendar.todayCount === 1 ? "" : "s"
       } today`
     );
   }
   const subtitle =
-    subtitleParts.length > 0
-      ? `You have ${subtitleParts.join(" and ")}.`
-      : "Connect Gmail and Calendar to power up your workspace.";
+    !integrationsReady
+      ? "Syncing your workspace..."
+      : subtitleParts.length > 0
+        ? `You have ${subtitleParts.join(" and ")}.`
+        : "Connect Gmail and Calendar to power up your workspace.";
 
   return (
     <AppShell>
