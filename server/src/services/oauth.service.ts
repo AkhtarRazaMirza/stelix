@@ -5,6 +5,7 @@ import { env } from "../env.js";
 import { logger } from "../config/logger.js";
 import { ForbiddenError, ValidationError } from "../errors/app.errors.js";
 import { IntegrationRepository } from "../repositories/integration.repository.js";
+import { CorsairService } from "./corsair.service.js";
 import type {
   IntegrationProvider,
   CreateIntegrationInput,
@@ -46,6 +47,9 @@ export class OAuthService {
     const provider = plugin as IntegrationProvider;
 
     await this.upsertIntegration(userId, provider);
+
+    // Invalidate cached Corsair connection status so the next GET /api/integrations call receives fresh state
+    new CorsairService().clearConnectionStatusCache(userId);
 
     logger.info("OAuth callback completed", { userId, provider });
 

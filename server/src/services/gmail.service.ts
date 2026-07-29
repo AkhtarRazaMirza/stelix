@@ -162,8 +162,51 @@ function buildRawMessage(input: SendEmailInput): string {
     .replace(/=+$/, "");
 }
 
-const INBOX_CACHE_TTL_MS = 15_000;
+const INBOX_CACHE_TTL_MS = 30_000;
+const MESSAGE_METADATA_CACHE_TTL_MS = 60_000;
+
 const inboxCache = new Map<string, { data: InboxPage; fetchedAt: number }>();
+export const messageMetadataCache = new Map<string, { data: GmailMessage; fetchedAt: number }>();
+export const inFlightMessageGets = new Map<string, Promise<GmailMessage>>();
+
+export async function fetchMessageWithCache(
+  gmailApi: any,
+  id: string,
+  metadataHeaders: string[] = ["From", "To", "Subject"]
+): Promise<GmailMessage> {
+  if (!id) {
+    return { id: "" } as GmailMessage;
+  }
+
+  const cachedMeta = messageMetadataCache.get(id);
+  if (cachedMeta && Date.now() - cachedMeta.fetchedAt < MESSAGE_METADATA_CACHE_TTL_MS) {
+    return cachedMeta.data;
+  }
+
+  const inFlight = inFlightMessageGets.get(id);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      const res = (await gmailApi.messages.get({
+        id,
+        format: "metadata",
+        metadataHeaders,
+      })) as GmailMessage;
+      if (res && res.id) {
+        messageMetadataCache.set(res.id, { data: res, fetchedAt: Date.now() });
+      }
+      return res;
+    } finally {
+      inFlightMessageGets.delete(id);
+    }
+  })();
+
+  inFlightMessageGets.set(id, fetchPromise);
+  return fetchPromise;
+}
 
 export class GmailService {
   constructor(
@@ -175,6 +218,12 @@ export class GmailService {
     for (const key of inboxCache.keys()) {
       if (key.startsWith(`${userId}:`)) {
         inboxCache.delete(key);
+      }
+    }
+    const now = Date.now();
+    for (const [id, entry] of messageMetadataCache.entries()) {
+      if (now - entry.fetchedAt >= MESSAGE_METADATA_CACHE_TTL_MS) {
+        messageMetadataCache.delete(id);
       }
     }
   }
@@ -210,12 +259,8 @@ export class GmailService {
 
     const emails = await Promise.all(
       listMessages.map(async (listMessage) => {
-        const message = (await gmail.messages.get({
-          id: listMessage.id ?? "",
-          format: "metadata",
-          metadataHeaders: ["From", "To", "Subject"],
-        })) as GmailMessage;
-
+        const id = listMessage.id ?? "";
+        const message = await fetchMessageWithCache(gmail, id, ["From", "To", "Subject"]);
         return mapSummary(message);
       })
     );

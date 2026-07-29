@@ -1,5 +1,6 @@
 import { CorsairService } from "./corsair.service.js";
 import { IntegrationGuard } from "./integration.guard.js";
+import { fetchMessageWithCache } from "./gmail.service.js";
 
 type GmailHeader = {
   name: string;
@@ -65,12 +66,7 @@ export class EmailService {
 
     const emails = await Promise.all(
       messages.slice(0, 10).map(async (message: GmailListMessage) => {
-        const email = await tenant.gmail.api.messages.get({
-          id: message.id,
-          format: "metadata",
-          metadataHeaders: ["From", "Subject"],
-        });
-
+        const email = await fetchMessageWithCache(tenant.gmail.api, message.id, ["From", "Subject"]);
         return mapEmail(email as GmailMessage);
       })
     );
@@ -96,12 +92,7 @@ export class EmailService {
 
     const emails = await Promise.all(
       messages.slice(0, 10).map(async (message: GmailListMessage) => {
-        const email = await tenant.gmail.api.messages.get({
-          id: message.id,
-          format: "metadata",
-          metadataHeaders: ["From", "Subject"],
-        });
-
+        const email = await fetchMessageWithCache(tenant.gmail.api, message.id, ["From", "Subject"]);
         return mapEmail(email as GmailMessage);
       })
     );
@@ -117,9 +108,7 @@ export class EmailService {
     });
 
     const tenant = this.corsairService.resolveTenant(userId);
-    const email = await tenant.gmail.api.messages.get({
-      id: emailId,
-    });
+    const email = await fetchMessageWithCache(tenant.gmail.api, emailId);
 
     return mapEmail(email as GmailMessage);
   }
